@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admissions NG ST Question Generator</title>
+    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #141824;
+            --bg-tertiary: #1e2433;
+            --accent: #ff6b35;
+            --accent-glow: rgba(255, 107, 53, 0.3);
+            --text-primary: #e8e9ed;
+            --text-secondary: #9ca3af;
+            --border: #2d3548;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body {
+            font-family: 'Spectral', serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(255, 107, 53, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(16, 185, 129, 0.03) 0%, transparent 50%);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            animation: fadeInDown 0.8s ease-out;
+        }
+
+        .subtitle {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.2em;
+            animation: fadeIn 1s ease-out 0.3s both;
+        }
+
+        .control-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            margin-bottom: 3rem;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+            animation: slideUp 0.8s ease-out 0.2s both;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.875rem 1rem;
+            font-family: 'Spectral', serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        select:focus, input[type="number"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        select:hover, input[type="number"]:hover {
+            border-color: var(--accent);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            min-width: 200px;
+            background: linear-gradient(135deg, var(--accent) 0%, #e85d2b 100%);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            padding: 1rem 2rem;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px var(--accent-glow);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            box-shadow: none;
+        }
+
+        button.secondary:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--accent);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .output-container {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            min-height: 300px;
+            animation: fadeIn 0.6s ease-out;
+        }
+
+        .output-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .output-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--text-secondary);
+        }
+
+        .question-count {
+            background: var(--accent);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        #output {
+            font-family: 'Spectral', serif;
+            white-space: pre-wrap;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+
+        .question-block {
+            margin-bottom: 2.5rem;
+            padding: 1.5rem;
+            background: var(--bg-tertiary);
+            border-left: 3px solid var(--accent);
+            border-radius: 8px;
+            animation: slideIn 0.4s ease-out;
+        }
+
+        .question-number {
+            color: var(--accent);
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .option {
+            margin-left: 1.5rem;
+            color: var(--text-secondary);
+            transition: color 0.2s ease;
+        }
+
+        .answer-key {
+            background: var(--bg-primary);
+            border: 1px solid var(--success);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 3rem;
+        }
+
+        .answer-key-title {
+            color: var(--success);
+            font-weight: 600;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            font-family: 'DM Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+        }
+
+        .placeholder {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+
+        .placeholder svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2.5rem;
+            }
+
+            .control-panel, .output-container {
+                padding: 1.5rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+
+        /* ========================================
+           TAB NAVIGATION
+           ======================================== */
+        .tab-nav {
+            display: flex;
+            gap: 0;
+            margin-bottom: 3rem;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .tab-btn {
+            flex: none;
+            min-width: auto;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            border-radius: 0;
+            color: var(--text-secondary);
+            padding: 1rem 2rem;
+            margin-bottom: -2px;
+            box-shadow: none;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-primary);
+            transform: none;
+            box-shadow: none;
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* ========================================
+           QUESTION CHECKBOXES (Generate Mode)
+           ======================================== */
+        .question-block {
+            position: relative;
+        }
+
+        .question-select-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .question-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .add-to-paper-bar {
+            display: none;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--accent);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            margin-top: 1.5rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .add-to-paper-bar.visible {
+            display: flex;
+        }
+
+        .add-to-paper-bar .info {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .add-to-paper-bar .info strong {
+            color: var(--accent);
+        }
+
+        .add-to-paper-btn {
+            flex: none;
+            min-width: auto;
+            padding: 0.6rem 1.5rem;
+            font-size: 0.8rem;
+        }
+
+        .select-all-row {
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .select-all-row.visible {
+            display: flex;
+        }
+
+        .select-all-row label {
+            margin-bottom: 0;
+            cursor: pointer;
+            color: var(--text-primary);
+        }
+
+        /* ========================================
+           PAPER BUILDER (Papers Tab)
+           ======================================== */
+        .paper-builder-top {
+            display: flex;
+            gap: 1rem;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .paper-builder-top .form-group {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .paper-builder-top button {
+            flex: none;
+            min-width: auto;
+            padding: 0.875rem 1.5rem;
+            align-self: flex-end;
+        }
+
+        .paper-builder-top input[type="text"] {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            padding: 0.875rem 1rem;
+            font-family: 'Spectral', serif;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+            width: 100%;
+        }
+
+        .paper-builder-top input[type="text"]:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .paper-list {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 2rem;
+        }
+
+        .paper-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+        }
+
+        .paper-chip:hover {
+            border-color: var(--accent);
+        }
+
+        .paper-chip.active {
+            border-color: var(--accent);
+            background: rgba(255, 107, 53, 0.1);
+            color: var(--accent);
+        }
+
+        .paper-chip .delete-paper {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0;
+            min-width: auto;
+            flex: none;
+            font-size: 1.1rem;
+            line-height: 1;
+            box-shadow: none;
+        }
+
+        .paper-chip .delete-paper:hover {
+            color: #ef4444;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .active-paper-panel {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            min-height: 300px;
+        }
+
+        .active-paper-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border);
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .active-paper-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+        }
+
+        .active-paper-stats {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .paper-concept-section {
+            margin-bottom: 2rem;
+        }
+
+        .paper-concept-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--success);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .paper-question-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .paper-question-item .pq-content {
+            flex: 1;
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .paper-question-item .pq-meta {
+            font-family: 'DM Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .paper-question-item .remove-q-btn {
+            flex: none;
+            min-width: auto;
+            background: transparent;
+            border: 1px solid var(--border);
+            color: #ef4444;
+            padding: 0.3rem 0.6rem;
+            font-size: 0.7rem;
+            border-radius: 6px;
+            box-shadow: none;
+        }
+
+        .paper-question-item .remove-q-btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+            border-color: #ef4444;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .paper-download-bar {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .paper-download-bar button {
+            flex: none;
+            min-width: 200px;
+        }
+
+        .no-paper-placeholder {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Question Generator</h1>
+            <p class="subtitle">Admissions NG ST Exam System</p>
+        </header>
+
+        <!-- Tab Navigation -->
+        <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab('generate')">Generate Questions</button>
+            <button class="tab-btn" onclick="switchTab('papers')">Question Papers</button>
+        </div>
+
+        <!-- ============ GENERATE TAB ============ -->
+        <div class="tab-content active" id="tab-generate">
+            <div class="control-panel">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="school">School</label>
+                        <select id="school" onchange="updateConceptDropdown()">
+                            <!-- Populated dynamically on DOMContentLoaded from schoolConfig -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="concept">Concept</label>
+                        <select id="concept" onchange="updateDifficultyDropdown()">
+                            <!-- Populated dynamically by updateConceptDropdown() -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="difficulty">Difficulty Level</label>
+                        <select id="difficulty">
+                            <!-- Populated dynamically by updateDifficultyDropdown() -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="count">Number of Questions</label>
+                        <input type="number" id="count" min="1" max="50" value="12">
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button onclick="generateQuestions()">Generate Questions</button>
+                    <button class="secondary" onclick="downloadPDF()" id="downloadBtn" disabled>Download as PDF</button>
+                </div>
+            </div>
+
+            <div class="output-container">
+                <div class="output-header">
+                    <div class="output-title">Generated Questions</div>
+                    <div class="question-count" id="questionCount">0 Questions</div>
+                </div>
+
+                <!-- Select All + Add to Paper bar (visible when a paper is active) -->
+                <div class="select-all-row" id="selectAllRow">
+                    <input type="checkbox" class="question-checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                    <label for="selectAllCheckbox">Select All</label>
+                </div>
+
+                <div id="output">
+                    <div class="placeholder">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p>Click "Generate Questions" to begin</p>
+                    </div>
+                </div>
+
+                <!-- Add to Paper bar -->
+                <div class="add-to-paper-bar" id="addToPaperBar">
+                    <div class="info">
+                        <span id="selectedCount">0</span> selected · Active paper: <strong id="activePaperLabel">None</strong>
+                    </div>
+                    <button class="add-to-paper-btn" onclick="addSelectedToPaper()">Add to Paper</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============ PAPERS TAB ============ -->
+        <div class="tab-content" id="tab-papers">
+            <div class="control-panel">
+                <div class="paper-builder-top">
+                    <div class="form-group">
+                        <label for="paperSchool">School</label>
+                        <select id="paperSchool">
+                            <!-- Populated dynamically -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="paperSetName">Set Name</label>
+                        <input type="text" id="paperSetName" placeholder="e.g. A, B, C...">
+                    </div>
+                    <button onclick="createPaper()">Create Paper</button>
+                </div>
+
+                <!-- Paper chips list -->
+                <div class="paper-list" id="paperList">
+                    <!-- Paper chips rendered here -->
+                </div>
+            </div>
+
+            <!-- Active Paper Contents -->
+            <div class="active-paper-panel" id="activePaperPanel">
+                <div class="no-paper-placeholder" id="noPaperPlaceholder">
+                    <p>Create a question paper above, then generate questions and add them here.</p>
+                </div>
+                <div id="activePaperContents" style="display:none;">
+                    <div class="active-paper-header">
+                        <div class="active-paper-title" id="activePaperTitleDisplay"></div>
+                        <div class="active-paper-stats" id="activePaperStats"></div>
+                    </div>
+                    <div id="paperQuestionsContainer"></div>
+                    <div class="paper-download-bar" id="paperDownloadBar">
+                        <button onclick="downloadQuestionPaperPDF()">Download Question Paper PDF</button>
+                        <button class="secondary" onclick="downloadAnswerKeyPDF()">Download Answer Key</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
