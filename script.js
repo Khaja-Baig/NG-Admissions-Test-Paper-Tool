@@ -1491,6 +1491,151 @@ const conceptOrderBySchool = {
     'BCA': ['number patterns', 'percentages', 'work and time', 'linear equations in two variables']
 };
 
+// ========================================
+// PAPER BLUEPRINT — exact required slots per school
+// ========================================
+// Each school maps to an array of { concept, difficulty } slots.
+// The difficulty values here match the difficulty *values* stored on each question
+// (i.e. the value from the dropdown / schoolConfig).
+// The label is for display in the progress grid.
+
+const paperBlueprint = {
+    'SOP': [
+        // Number Patterns — 4 questions
+        { concept: 'number patterns', difficulty: 'easy only',   label: 'Easy' },
+        { concept: 'number patterns', difficulty: 'medium 1',    label: 'Medium 1' },
+        { concept: 'number patterns', difficulty: 'medium 2',    label: 'Medium 2' },
+        { concept: 'number patterns', difficulty: 'hard only',   label: 'Hard' },
+        // Percentages — 3 questions
+        { concept: 'percentages', difficulty: 'easy only',   label: 'Easy' },
+        { concept: 'percentages', difficulty: 'medium only', label: 'Medium' },
+        { concept: 'percentages', difficulty: 'hard only',   label: 'Hard' },
+        // Work and Time — 3 questions
+        { concept: 'work and time', difficulty: 'easy only',   label: 'Easy' },
+        { concept: 'work and time', difficulty: 'medium only', label: 'Medium' },
+        { concept: 'work and time', difficulty: 'hard only',   label: 'Hard' },
+        // Linear Equations — 6 questions
+        { concept: 'linear equations in two variables', difficulty: 'easy 1',   label: 'Easy 1' },
+        { concept: 'linear equations in two variables', difficulty: 'easy 2',   label: 'Easy 2' },
+        { concept: 'linear equations in two variables', difficulty: 'medium 1', label: 'Medium 1' },
+        { concept: 'linear equations in two variables', difficulty: 'medium 2', label: 'Medium 2' },
+        { concept: 'linear equations in two variables', difficulty: 'hard 1',   label: 'Hard 1' },
+        { concept: 'linear equations in two variables', difficulty: 'hard 2',   label: 'Hard 2' }
+    ],
+    'SOB': [
+        // Number Patterns — 4 questions
+        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
+        // Percentages — 4 questions
+        { concept: 'percentages', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'percentages', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'percentages', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'percentages', difficulty: 'hard only', label: 'Hard' },
+        // Profit and Loss — 4 questions
+        { concept: 'profit and loss', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'profit and loss', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'profit and loss', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'profit and loss', difficulty: 'hard only', label: 'Hard' },
+        // Simple Interest — 4 questions
+        { concept: 'simple interest', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'simple interest', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'simple interest', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'simple interest', difficulty: 'hard only', label: 'Hard' }
+    ],
+    'SOF': [
+        // Same structure as SOB
+        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
+        { concept: 'percentages', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'percentages', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'percentages', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'percentages', difficulty: 'hard only', label: 'Hard' },
+        { concept: 'profit and loss', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'profit and loss', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'profit and loss', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'profit and loss', difficulty: 'hard only', label: 'Hard' },
+        { concept: 'simple interest', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'simple interest', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'simple interest', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'simple interest', difficulty: 'hard only', label: 'Hard' }
+    ],
+    'BCA': [
+        // Same structure as SOP
+        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
+        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
+        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
+        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
+        { concept: 'percentages', difficulty: 'easy only',   label: 'Easy' },
+        { concept: 'percentages', difficulty: 'medium only', label: 'Medium' },
+        { concept: 'percentages', difficulty: 'hard only',   label: 'Hard' },
+        { concept: 'work and time', difficulty: 'easy only',   label: 'Easy' },
+        { concept: 'work and time', difficulty: 'medium only', label: 'Medium' },
+        { concept: 'work and time', difficulty: 'hard only',   label: 'Hard' },
+        { concept: 'linear equations in two variables', difficulty: 'easy 1',   label: 'Easy 1' },
+        { concept: 'linear equations in two variables', difficulty: 'easy 2',   label: 'Easy 2' },
+        { concept: 'linear equations in two variables', difficulty: 'medium 1', label: 'Medium 1' },
+        { concept: 'linear equations in two variables', difficulty: 'medium 2', label: 'Medium 2' },
+        { concept: 'linear equations in two variables', difficulty: 'hard 1',   label: 'Hard 1' },
+        { concept: 'linear equations in two variables', difficulty: 'hard 2',   label: 'Hard 2' }
+    ]
+};
+
+// ========================================
+// PAPER PROGRESS COMPUTATION
+// ========================================
+
+/**
+ * Computes the fill-status of every blueprint slot for the given paper.
+ * Returns an object keyed by concept, each containing:
+ *   { label, required: number, filled: number, slots: [{ difficulty, label, filled: bool }] }
+ */
+function computePaperProgress(paper) {
+    const blueprint = paperBlueprint[paper.school];
+    if (!blueprint) return null;
+
+    // Count how many questions exist per concept+difficulty
+    const counts = {};
+    paper.questions.forEach(q => {
+        const key = `${q.concept}|||${q.difficulty}`;
+        counts[key] = (counts[key] || 0) + 1;
+    });
+
+    // Group blueprint slots by concept (preserving order)
+    const conceptOrder = [];
+    const conceptMap = {};
+
+    blueprint.forEach(slot => {
+        if (!conceptMap[slot.concept]) {
+            conceptMap[slot.concept] = { slots: [], filled: 0, required: 0 };
+            conceptOrder.push(slot.concept);
+        }
+        const key = `${slot.concept}|||${slot.difficulty}`;
+        const isFilled = (counts[key] || 0) >= 1;
+        conceptMap[slot.concept].slots.push({
+            difficulty: slot.difficulty,
+            label: slot.label,
+            filled: isFilled,
+            count: counts[key] || 0
+        });
+        conceptMap[slot.concept].required++;
+        if (isFilled) conceptMap[slot.concept].filled++;
+    });
+
+    return { conceptOrder, conceptMap };
+}
+
+/**
+ * Checks if a specific concept+difficulty slot is already filled in the given paper.
+ * Returns the count of questions already in that slot.
+ */
+function getSlotCount(paper, concept, difficulty) {
+    return paper.questions.filter(q => q.concept === concept && q.difficulty === difficulty).length;
+}
+
 // Concept explanation texts for the PDF (matching reference papers)
 // Each concept has an array of paragraphs. Blank string '' = blank line in PDF.
 const conceptExplanations = {
@@ -1713,7 +1858,56 @@ function renderActivePaper() {
     const schoolLabel = schoolConfig[paper.school]?.label || paper.school;
 
     document.getElementById('activePaperTitleDisplay').textContent = `${activePaperId} — ${schoolLabel}`;
-    document.getElementById('activePaperStats').textContent = `${paper.questions.length} questions`;
+
+    // Compute blueprint progress
+    const progress = computePaperProgress(paper);
+    const blueprint = paperBlueprint[paper.school];
+    const totalRequired = blueprint ? blueprint.length : 0;
+    const totalFilled = progress ? progress.conceptOrder.reduce((sum, c) => sum + progress.conceptMap[c].filled, 0) : 0;
+
+    document.getElementById('activePaperStats').textContent = `${paper.questions.length} questions · ${totalFilled}/${totalRequired} slots filled`;
+
+    // ---- Render progress grid ----
+    const progressContainer = document.getElementById('paperProgressGrid');
+    if (progressContainer && progress) {
+        let progressHtml = '';
+
+        // Summary bar
+        const summaryClass = totalFilled === totalRequired ? 'all-done' : (totalFilled > 0 ? 'in-progress' : 'not-started');
+        const summaryIcon = totalFilled === totalRequired ? '✅ Paper Complete' : (totalFilled > 0 ? '⚠️ In Progress' : '❌ Empty');
+        progressHtml += `<div class="progress-summary">`;
+        progressHtml += `<span class="progress-summary-total">Slots: ${totalFilled} / ${totalRequired}</span>`;
+        progressHtml += `<span class="progress-summary-status ${summaryClass}">${summaryIcon}</span>`;
+        progressHtml += `</div>`;
+
+        // Grid of concept cards
+        progressHtml += `<div class="progress-grid">`;
+        progress.conceptOrder.forEach(conceptKey => {
+            const info = progress.conceptMap[conceptKey];
+            const conceptLabel = conceptDisplayTitles[conceptKey] || conceptKey;
+            const statusClass = info.filled === info.required ? 'status-complete' : (info.filled > 0 ? 'status-partial' : 'status-empty');
+            const statusIcon = info.filled === info.required ? '✅' : (info.filled > 0 ? '⚠️' : '❌');
+
+            progressHtml += `<div class="progress-card ${statusClass}">`;
+            progressHtml += `<div class="progress-card-header">`;
+            progressHtml += `<span class="progress-card-title">${conceptLabel}</span>`;
+            progressHtml += `<span class="progress-card-count">${info.filled}/${info.required} ${statusIcon}</span>`;
+            progressHtml += `</div>`;
+            progressHtml += `<div class="progress-slots">`;
+            info.slots.forEach(slot => {
+                const slotClass = slot.count > 1 ? 'overfilled' : (slot.filled ? 'filled' : 'empty');
+                const slotIcon = slot.count > 1 ? `⚠️ ${slot.count}` : (slot.filled ? '✓' : '✗');
+                progressHtml += `<span class="progress-slot ${slotClass}">${slot.label}: ${slotIcon}</span>`;
+            });
+            progressHtml += `</div>`;
+            progressHtml += `</div>`;
+        });
+        progressHtml += `</div>`;
+
+        progressContainer.innerHTML = progressHtml;
+    } else if (progressContainer) {
+        progressContainer.innerHTML = '';
+    }
 
     // Group questions by concept, maintaining the order they appear in conceptOrderBySchool
     const order = conceptOrderBySchool[paper.school] || [];
@@ -1826,13 +2020,36 @@ function addSelectedToPaper() {
     }
 
     const paper = questionPapers[activePaperId];
+    const blueprint = paperBlueprint[paper.school];
 
+    // Collect selected questions
+    const selectedQuestions = [];
     checked.forEach(cb => {
         const idx = parseInt(cb.dataset.index);
         const q = window.generatedQuestionsRaw[idx];
-        if (!q) return;
+        if (q) selectedQuestions.push(q);
+    });
 
-        // Add a copy to the paper
+    // Validate against blueprint: warn about slots that are already filled or not in blueprint
+    const warnings = [];
+    let addedCount = 0;
+    const skipped = [];
+
+    selectedQuestions.forEach(q => {
+        if (blueprint) {
+            // Check if this concept+difficulty is a valid slot in the blueprint
+            const isValidSlot = blueprint.some(s => s.concept === q.concept && s.difficulty === q.difficulty);
+            if (!isValidSlot) {
+                warnings.push(`"${q.concept} / ${q.difficulty}" is not a required slot for ${paper.school}.`);
+            }
+            // Check if the slot is already filled
+            const currentCount = getSlotCount(paper, q.concept, q.difficulty);
+            if (currentCount >= 1) {
+                warnings.push(`Slot "${q.concept} / ${q.difficulty}" already has ${currentCount} question(s). Adding another will overfill it.`);
+            }
+        }
+
+        // Add to paper regardless (soft warning, not blocking)
         paper.questions.push({
             concept: q.concept,
             difficulty: q.difficulty,
@@ -1844,6 +2061,7 @@ function addSelectedToPaper() {
             displayOptions: q.displayOptions,
             correctLetter: q.correctLetter
         });
+        addedCount++;
     });
 
     // Uncheck all
@@ -1851,10 +2069,17 @@ function addSelectedToPaper() {
     document.getElementById('selectAllCheckbox').checked = false;
     updateSelectedCount();
 
-    // Update paper list chip counts
+    // Update paper list chip counts and re-render active paper (updates progress grid)
     renderPaperList();
+    renderActivePaper();
 
-    alert(`${checked.length} question(s) added to "${activePaperId}".`);
+    // Show result
+    if (warnings.length > 0) {
+        const uniqueWarnings = [...new Set(warnings)];
+        alert(`${addedCount} question(s) added to "${activePaperId}".\n\n⚠️ Warnings:\n• ${uniqueWarnings.join('\n• ')}`);
+    } else {
+        alert(`${addedCount} question(s) added to "${activePaperId}".`);
+    }
 }
 
 // ========================================
