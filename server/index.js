@@ -565,13 +565,13 @@ app.use((err, req, res, next) => {
 // START SERVER
 // ============================================================================
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
     logger.info(`NG Admissions API running`, {
         port: PORT,
         env:  NODE_ENV,
         rules: listRuleIds().length,
         schools: listSchools().length,
-        url: `http://localhost:${PORT}`
+        url: `http://0.0.0.0:${PORT}`
     });
     logger.info(`Browser app: http://localhost:${PORT}/app.html`);
     logger.info(`Health check: http://localhost:${PORT}/api/health`);

@@ -14,8 +14,6 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: 3000
       - key: CORS_ORIGIN
         sync: false   # set manually in Render dashboard
       - key: RATE_LIMIT_MAX_REQUESTS
