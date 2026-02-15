@@ -451,6 +451,140 @@ assert(getSlots('UNKNOWN') === null, 'getSlots("UNKNOWN") returns null');
 assert(getConceptConfig('UNKNOWN') === null, 'getConceptConfig("UNKNOWN") returns null');
 
 // ============================================================================
+// TEST 19: utils.js — shared utility functions
+// ============================================================================
+console.log('\n' + DIVIDER);
+console.log('TEST 19: utils.js — shared utility functions');
+console.log(DIVIDER);
+
+const utils = require('../rules/utils');
+
+// 19a: randomInt returns integers in range
+for (let i = 0; i < 100; i++) {
+    const val = utils.randomInt(5, 15);
+    assert(Number.isInteger(val) && val >= 5 && val <= 15, `randomInt(5,15) → ${val} is in range`);
+}
+
+// 19b: randomInt min === max
+assert(utils.randomInt(7, 7) === 7, 'randomInt(7,7) returns 7');
+
+// 19c: hasTrailingZeros
+assert(utils.hasTrailingZeros(120) === true, 'hasTrailingZeros(120) → true');
+assert(utils.hasTrailingZeros(10) === true, 'hasTrailingZeros(10) → true');
+assert(utils.hasTrailingZeros(123) === false, 'hasTrailingZeros(123) → false');
+assert(utils.hasTrailingZeros(0) === false, 'hasTrailingZeros(0) → false');
+assert(utils.hasTrailingZeros(1) === false, 'hasTrailingZeros(1) → false');
+
+// 19d: randomIntNoTrailing never returns trailing zeros (high confidence)
+for (let i = 0; i < 100; i++) {
+    const val = utils.randomIntNoTrailing(11, 99);
+    assert(!utils.hasTrailingZeros(val), `randomIntNoTrailing(11,99) → ${val} has no trailing zeros`);
+}
+
+// 19e: shuffle returns same length, same elements
+const original = [1, 2, 3, 4, 5];
+const shuffled = utils.shuffle(original);
+assert(shuffled.length === original.length, 'shuffle preserves length');
+assert(original.every(v => shuffled.includes(v)), 'shuffle preserves all elements');
+// Verify it does NOT mutate the original
+assert(JSON.stringify(original) === JSON.stringify([1,2,3,4,5]), 'shuffle does not mutate original');
+
+// 19f: generateDistractors returns correct count, all unique, none equal to correct
+const distractors = utils.generateDistractors(50, 3);
+assert(distractors.length === 3, 'generateDistractors returns 3 distractors');
+assert(!distractors.includes(50), 'distractors do not include correct answer');
+assert(new Set(distractors).size === 3, 'distractors are all unique');
+distractors.forEach(d => {
+    assert(d > 0, `distractor ${d} is positive`);
+    assert(!utils.hasTrailingZeros(d), `distractor ${d} has no trailing zeros`);
+});
+
+// 19g: createOptions returns 4 options with correct letter
+const result = utils.createOptions(42);
+assert(result.options.length === 4, 'createOptions returns 4 options');
+assert(result.options.includes(42), 'createOptions includes correct answer');
+assert(['A','B','C','D'].includes(result.correctLetter), 'correctLetter is A-D');
+const correctIdx = result.options.indexOf(42);
+assert(result.correctLetter === String.fromCharCode(65 + correctIdx), 'correctLetter matches position');
+
+// ============================================================================
+// TEST 20: mcqHelpers.js — MCQ string option generation
+// ============================================================================
+console.log('\n' + DIVIDER);
+console.log('TEST 20: mcqHelpers.js — MCQ string option generation');
+console.log(DIVIDER);
+
+const mcqHelpers = require('../rules/mcqHelpers');
+
+// 20a: generateMCQOptions returns 4 options including the correct one
+const correctStr = '12 notebooks and 8 pens';
+const mcqOpts = mcqHelpers.generateMCQOptions(correctStr);
+assert(Array.isArray(mcqOpts), 'generateMCQOptions returns an array');
+assert(mcqOpts.length === 4, 'generateMCQOptions returns 4 options');
+assert(mcqOpts.includes(correctStr), 'options include correct answer');
+assert(new Set(mcqOpts).size >= 2, 'options have at least 2 distinct values');
+
+// 20b: generateMCQOptions with cashier-style answer
+const cashierStr = '15 of Rs.500-notes and 5 of Rs.100-notes';
+const cashierOpts = mcqHelpers.generateMCQOptions(cashierStr);
+assert(cashierOpts.length === 4, 'cashier MCQ returns 4 options');
+assert(cashierOpts.includes(cashierStr), 'cashier MCQ includes correct');
+
+// 20c: shuffleOptionsWithAnswer shuffles and identifies correct letter
+const opts = ['Alpha', 'Beta', 'Gamma', 'Delta'];
+const shuffResult = mcqHelpers.shuffleOptionsWithAnswer(opts, 'Gamma');
+assert(shuffResult.options.length === 4, 'shuffled options has 4 items');
+assert(shuffResult.options.includes('Gamma'), 'shuffled options contains correct');
+assert(['A','B','C','D'].includes(shuffResult.correctLetter), 'correctLetter is A-D');
+const gammaIdx = shuffResult.options.indexOf('Gamma');
+assert(shuffResult.correctLetter === String.fromCharCode(65 + gammaIdx), 'correctLetter matches Gamma position');
+
+// 20d: shuffleOptionsWithAnswer does not mutate input
+const origOpts = ['W', 'X', 'Y', 'Z'];
+const optsCopy = [...origOpts];
+mcqHelpers.shuffleOptionsWithAnswer(origOpts, 'X');
+assert(JSON.stringify(origOpts) === JSON.stringify(optsCopy), 'shuffleOptionsWithAnswer does not mutate input');
+
+// ============================================================================
+// TEST 21: displayConfig.js — display configuration data
+// ============================================================================
+console.log('\n' + DIVIDER);
+console.log('TEST 21: displayConfig.js — display configuration data');
+console.log(DIVIDER);
+
+const displayConfig = require('../rules/displayConfig');
+
+// 21a: conceptExplanations has all 6 concepts
+const expectedConcepts = [
+    'number patterns', 'percentages', 'work and time',
+    'linear equations in two variables', 'profit and loss', 'simple interest'
+];
+expectedConcepts.forEach(c => {
+    assert(c in displayConfig.conceptExplanations, `conceptExplanations has "${c}"`);
+    assert(Array.isArray(displayConfig.conceptExplanations[c]), `conceptExplanations["${c}"] is an array`);
+});
+
+// 21b: number patterns has empty explanation
+assert(displayConfig.conceptExplanations['number patterns'].length === 0, 'number patterns has empty explanation');
+
+// 21c: other concepts have non-empty explanations
+['percentages', 'work and time', 'profit and loss', 'simple interest', 'linear equations in two variables'].forEach(c => {
+    assert(displayConfig.conceptExplanations[c].length > 0, `conceptExplanations["${c}"] is non-empty`);
+});
+
+// 21d: conceptDisplayTitles has all 6 concepts
+expectedConcepts.forEach(c => {
+    assert(c in displayConfig.conceptDisplayTitles, `conceptDisplayTitles has "${c}"`);
+    assert(typeof displayConfig.conceptDisplayTitles[c] === 'string', `conceptDisplayTitles["${c}"] is a string`);
+});
+
+// 21e: schoolFullNames has all 4 schools
+['SOP', 'SOB', 'SOF', 'BCA'].forEach(s => {
+    assert(s in displayConfig.schoolFullNames, `schoolFullNames has "${s}"`);
+    assert(typeof displayConfig.schoolFullNames[s] === 'string', `schoolFullNames["${s}"] is a string`);
+});
+
+// ============================================================================
 // SUMMARY
 // ============================================================================
 

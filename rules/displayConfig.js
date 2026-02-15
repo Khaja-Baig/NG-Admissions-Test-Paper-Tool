@@ -1,0 +1,93 @@
+// ============================================================================
+// DISPLAY CONFIGURATION
+// ============================================================================
+//
+// Static display data used by the browser UI for PDF generation and rendering.
+// Centralised here so script.js stays a pure UI shell.
+//
+// ============================================================================
+
+/**
+ * Concept explanation texts for the Question Paper PDF.
+ * Each concept has an array of paragraphs. Blank string '' = blank line in PDF.
+ */
+const conceptExplanations = {
+    'number patterns': [], // No explanation — questions start immediately after separator
+    'percentages': [
+        'A percentage helps us understand how much a part is of the whole.',
+        'The word "percent" means "out of 100."',
+        '',
+        'For example, if a school has 50 students and 10 of them are unhealthy, then the percentage of unhealthy students will be:',
+        '',
+        'Percentage = (Part \u00F7 Total) \u00D7 100',
+        '       = (10 \u00F7 50) \u00D7 100 = 20%',
+        '',
+        'Now answer the following questions.'
+    ],
+    'work and time': [
+        'For the next questions, think in a practical way. For example, if you can plant 100 trees in 1 hour, then in 4 hours you can plant: 100 \u00D7 4 = 400 trees.',
+        '',
+        'This means the work done increases with time.',
+        '',
+        'Using the same idea, answer the following questions.'
+    ],
+    'linear equations in two variables': [
+        'Think of these questions like real-life situations. Two values are unknown. Use letters like x and y to represent them. Then use the given information to write an equation.',
+        '',
+        'Example:',
+        'If the total cost of apples and oranges is Rs.100, and apples cost Rs.3 each while oranges cost Rs.2 each, the equation can be written as:',
+        '3x + 2y = 100',
+        '',
+        'Now answer the following questions.'
+    ],
+    'profit and loss': [
+        'Profit and loss help us understand buying and selling things.',
+        '',
+        '   \u2022  Cost price (CP) is the price at which something is bought.',
+        '   \u2022  Selling price (SP) is the price at which something is sold.',
+        '',
+        'If we sell something for more money than we bought it for, we get profit.',
+        'If we sell it for less money than we bought it for, we get loss.',
+        '',
+        'Now answer the following questions.'
+    ],
+    'simple interest': [
+        'Simple interest is the extra money paid or earned on a fixed amount for a fixed time at a fixed rate.',
+        '',
+        'Simple Interest = Principal \u00D7 Rate \u00D7 Time \u00F7 100',
+        '',
+        '   \u2022  Principal (P) is the amount of money we first take or invest.',
+        '   \u2022  The Rate of interest (R) is the percentage of interest per year.',
+        '   \u2022  Time (T) means how many years the money is taken/lent for.',
+        '',
+        'Now answer the following questions.'
+    ]
+};
+
+/**
+ * Human-readable titles for each concept key.
+ */
+const conceptDisplayTitles = {
+    'number patterns': 'Number Patterns',
+    'percentages': 'Percentages',
+    'work and time': 'Work and Time',
+    'linear equations in two variables': 'Linear Equations in Two Variables',
+    'profit and loss': 'Profit and Loss',
+    'simple interest': 'Simple Interest'
+};
+
+/**
+ * Full school names for the PDF header.
+ */
+const schoolFullNames = {
+    'SOP': 'School Of Programming',
+    'SOB': 'School Of Business',
+    'SOF': 'School Of Finance',
+    'BCA': 'BCA'
+};
+
+module.exports = {
+    conceptExplanations,
+    conceptDisplayTitles,
+    schoolFullNames
+};

@@ -15,6 +15,7 @@ const { getRule, listRules, listRuleIds } = require('./ruleRegistry');
 const { schoolRuleMap, schoolLabels, getSlots, getConceptConfig, listSchools } = require('./schoolRuleMap');
 const utils = require('./utils');
 const mcqHelpers = require('./mcqHelpers');
+const displayConfig = require('./displayConfig');
 
 module.exports = {
     getRule,
@@ -37,4 +38,9 @@ module.exports = {
     // MCQ helpers (string-based options for linear-equation MCQ rules)
     generateMCQOptions:     mcqHelpers.generateMCQOptions,
     shuffleOptionsWithAnswer: mcqHelpers.shuffleOptionsWithAnswer,
+
+    // Display configuration (PDF content, concept titles, school names)
+    conceptExplanations:    displayConfig.conceptExplanations,
+    conceptDisplayTitles:   displayConfig.conceptDisplayTitles,
+    schoolFullNames:        displayConfig.schoolFullNames,
 };
