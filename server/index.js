@@ -31,10 +31,11 @@ const logger     = require('./logger');
 
 // --- Rule engine imports (CommonJS, same modules the browser bundle uses) ---
 const { getRule, listRules, listRuleIds } = require('../rules/ruleRegistry');
-const { schoolRuleMap, schoolLabels, getSlots, getConceptConfig, listSchools } = require('../rules/schoolRuleMap');
-const displayConfig = require('../rules/displayConfig');
 const { createOptions, shuffle } = require('../rules/utils');
 const { generateMCQOptions, shuffleOptionsWithAnswer } = require('../rules/mcqHelpers');
+
+// --- Data layer (Firestore-first, JSON fallback) ---
+const dataLoader = require('./dataLoader');
 
 const app  = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
@@ -104,7 +105,6 @@ app.get('/', (req, res) => {
 // INPUT VALIDATION HELPERS
 // ============================================================================
 
-const VALID_SCHOOLS = new Set(listSchools());
 const VALID_RULE_IDS = new Set(listRuleIds());
 
 function validateSchool(school) {
@@ -112,8 +112,9 @@ function validateSchool(school) {
         return 'Missing required field: "school"';
     }
     const sanitized = school.trim().toUpperCase();
-    if (!VALID_SCHOOLS.has(sanitized)) {
-        return `Invalid school "${school}". Valid: ${[...VALID_SCHOOLS].join(', ')}`;
+    const validSchools = dataLoader.listSchools();
+    if (!validSchools.includes(sanitized)) {
+        return `Invalid school "${school}". Valid: ${validSchools.join(', ')}`;
     }
     return null; // valid
 }
@@ -168,7 +169,8 @@ app.get('/api/health', (req, res) => {
         uptimeMs,
         env:       NODE_ENV,
         rules:     listRuleIds().length,
-        schools:   listSchools().length,
+        schools:   dataLoader.listSchools().length,
+        dataSource: dataLoader.getDataSource(),
         timestamp: new Date().toISOString()
     });
 });
@@ -376,7 +378,8 @@ app.post('/api/rules/:id/generate-batch', generateLimiter, (req, res) => {
  * Returns the list of schools with labels.
  */
 app.get('/api/schools', (req, res) => {
-    const schools = listSchools().map(s => ({
+    const schoolLabels = dataLoader.getSchoolLabels();
+    const schools = dataLoader.listSchools().map(s => ({
         id:    s,
         label: schoolLabels[s] || s
     }));
@@ -391,7 +394,7 @@ app.get('/api/schools/:id/config', (req, res) => {
     const schoolErr = validateSchool(req.params.id);
     if (schoolErr) return res.status(400).json({ error: schoolErr });
 
-    const config = getConceptConfig(req.params.id);
+    const config = dataLoader.getConceptConfig(req.params.id);
     if (!config) return res.status(404).json({ error: `School "${req.params.id}" not found` });
     res.json({ school: req.params.id, concepts: config });
 });
@@ -404,7 +407,7 @@ app.get('/api/schools/:id/slots', (req, res) => {
     const schoolErr = validateSchool(req.params.id);
     if (schoolErr) return res.status(400).json({ error: schoolErr });
 
-    const slots = getSlots(req.params.id);
+    const slots = dataLoader.getSlots(req.params.id);
     if (!slots) return res.status(404).json({ error: `School "${req.params.id}" not found` });
     res.json({ school: req.params.id, totalSlots: slots.length, slots });
 });
@@ -417,9 +420,9 @@ app.get('/api/schools/:id/slots', (req, res) => {
  */
 app.get('/api/display-config', (req, res) => {
     res.json({
-        conceptExplanations:  displayConfig.conceptExplanations,
-        conceptDisplayTitles: displayConfig.conceptDisplayTitles,
-        schoolFullNames:      displayConfig.schoolFullNames
+        conceptExplanations:  dataLoader.getConceptExplanations(),
+        conceptDisplayTitles: dataLoader.getConceptDisplayTitles(),
+        schoolFullNames:      dataLoader.getSchoolFullNames()
     });
 });
 
@@ -440,13 +443,15 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
         return res.status(400).json({ error: schoolErr });
     }
 
-    const slots = getSlots(school);
+    const slots = dataLoader.getSlots(school);
     if (!slots) {
         return res.status(404).json({ error: `School "${school}" not found` });
     }
 
+    const schoolLabels = dataLoader.getSchoolLabels();
+    const schoolFullNames = dataLoader.getSchoolFullNames();
     const schoolLabel = schoolLabels[school] || school;
-    const schoolFullName = displayConfig.schoolFullNames[school] || schoolLabel;
+    const schoolFullName = schoolFullNames[school] || schoolLabel;
 
     // Generate all questions
     const questions = [];
@@ -514,11 +519,13 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
 
     // Group by concept for structured output
     const byConcept = {};
+    const conceptDisplayTitles = dataLoader.getConceptDisplayTitles();
+    const conceptExplanations = dataLoader.getConceptExplanations();
     for (const q of questions) {
         if (!byConcept[q.concept]) {
             byConcept[q.concept] = {
-                conceptTitle: displayConfig.conceptDisplayTitles[q.concept] || q.concept,
-                explanation:  displayConfig.conceptExplanations[q.concept] || [],
+                conceptTitle: conceptDisplayTitles[q.concept] || q.concept,
+                explanation:  conceptExplanations[q.concept] || [],
                 questions:    []
             };
         }
@@ -535,6 +542,166 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
         // Flat array for easy iteration
         allQuestions:   questions
     });
+});
+
+// ============================================================================
+// ADMIN ROUTES (CRUD for schools, concepts, display config)
+// ============================================================================
+
+/**
+ * POST /api/admin/refresh
+ * Force reload data from Firestore.
+ */
+app.post('/api/admin/refresh', async (req, res) => {
+    try {
+        const source = await dataLoader.refreshCache();
+        res.json({ message: 'Cache refreshed', source, data: dataLoader.getDataSource() });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to refresh: ' + err.message });
+    }
+});
+
+/**
+ * GET /api/admin/schools/:id
+ * Get full school data (for edit form).
+ */
+app.get('/api/admin/schools/:id', (req, res) => {
+    const schoolId = req.params.id.trim().toUpperCase();
+    const schoolLabels = dataLoader.getSchoolLabels();
+    const schoolFullNames = dataLoader.getSchoolFullNames();
+    const schoolRuleMap = dataLoader.getSchoolRuleMap();
+    const conceptDisplayLabels = dataLoader.getConceptDisplayLabels();
+
+    if (!schoolRuleMap[schoolId]) {
+        return res.status(404).json({ error: `School "${schoolId}" not found` });
+    }
+
+    const concepts = {};
+    for (const [key, slots] of Object.entries(schoolRuleMap[schoolId])) {
+        concepts[key] = {
+            displayLabel: conceptDisplayLabels[key] || key,
+            slots
+        };
+    }
+
+    res.json({
+        id: schoolId,
+        label: schoolLabels[schoolId] || schoolId,
+        fullName: schoolFullNames[schoolId] || schoolId,
+        concepts
+    });
+});
+
+/**
+ * PUT /api/admin/schools/:id
+ * Create or update a school.
+ * Body: { label, fullName, concepts: { 'concept key': { displayLabel, slots: [...] } } }
+ */
+app.put('/api/admin/schools/:id', async (req, res) => {
+    const schoolId = req.params.id.trim().toUpperCase();
+
+    if (!schoolId || schoolId.length > 20 || !/^[A-Z0-9_]+$/.test(schoolId)) {
+        return res.status(400).json({ error: 'Invalid school ID — use uppercase letters, numbers, underscores (max 20 chars)' });
+    }
+
+    const { label, fullName, concepts } = req.body || {};
+
+    if (!label || typeof label !== 'string') {
+        return res.status(400).json({ error: 'Missing required field: "label"' });
+    }
+
+    if (concepts && typeof concepts !== 'object') {
+        return res.status(400).json({ error: '"concepts" must be an object' });
+    }
+
+    // Validate each concept's slots reference real rules
+    if (concepts) {
+        for (const [conceptKey, conceptData] of Object.entries(concepts)) {
+            if (!conceptData.slots || !Array.isArray(conceptData.slots)) {
+                return res.status(400).json({ error: `Concept "${conceptKey}" must have a "slots" array` });
+            }
+            for (const slot of conceptData.slots) {
+                if (!slot.ruleId || !slot.difficulty) {
+                    return res.status(400).json({ error: `Each slot in "${conceptKey}" must have "ruleId" and "difficulty"` });
+                }
+                const rule = getRule(slot.ruleId);
+                if (!rule) {
+                    return res.status(400).json({ error: `Unknown rule "${slot.ruleId}" in concept "${conceptKey}"` });
+                }
+            }
+        }
+    }
+
+    try {
+        const doc = await dataLoader.saveSchool(schoolId, { label, fullName, concepts });
+        res.json({ message: `School "${schoolId}" saved`, school: doc });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to save school: ' + err.message });
+    }
+});
+
+/**
+ * DELETE /api/admin/schools/:id
+ * Delete a school.
+ */
+app.delete('/api/admin/schools/:id', async (req, res) => {
+    const schoolId = req.params.id.trim().toUpperCase();
+
+    const schoolRuleMap = dataLoader.getSchoolRuleMap();
+    if (!schoolRuleMap[schoolId]) {
+        return res.status(404).json({ error: `School "${schoolId}" not found` });
+    }
+
+    try {
+        await dataLoader.deleteSchool(schoolId);
+        res.json({ message: `School "${schoolId}" deleted` });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete school: ' + err.message });
+    }
+});
+
+/**
+ * PUT /api/admin/display-config
+ * Update display config (explanations, titles, full names).
+ * Body: { conceptExplanations?, conceptDisplayTitles?, schoolFullNames? }
+ */
+app.put('/api/admin/display-config', async (req, res) => {
+    const { conceptExplanations, conceptDisplayTitles, schoolFullNames } = req.body || {};
+
+    if (!conceptExplanations && !conceptDisplayTitles && !schoolFullNames) {
+        return res.status(400).json({ error: 'Provide at least one of: conceptExplanations, conceptDisplayTitles, schoolFullNames' });
+    }
+
+    try {
+        const doc = await dataLoader.saveDisplayConfig({
+            conceptExplanations,
+            conceptDisplayTitles,
+            schoolFullNames
+        });
+        res.json({ message: 'Display config updated', config: doc });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update display config: ' + err.message });
+    }
+});
+
+/**
+ * PUT /api/admin/concept-labels
+ * Update concept display labels.
+ * Body: { labels: { 'number patterns': 'Number Patterns', ... } }
+ */
+app.put('/api/admin/concept-labels', async (req, res) => {
+    const { labels } = req.body || {};
+
+    if (!labels || typeof labels !== 'object' || Object.keys(labels).length === 0) {
+        return res.status(400).json({ error: 'Provide "labels" object with at least one entry' });
+    }
+
+    try {
+        await dataLoader.saveConceptLabels(labels);
+        res.json({ message: 'Concept labels updated', labels });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to update concept labels: ' + err.message });
+    }
 });
 
 // ============================================================================
@@ -562,19 +729,31 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================================================
-// START SERVER
+// START SERVER (async — initialize data layer first)
 // ============================================================================
 
-app.listen(PORT, '0.0.0.0', () => {
-    logger.info(`NG Admissions API running`, {
-        port: PORT,
-        env:  NODE_ENV,
-        rules: listRuleIds().length,
-        schools: listSchools().length,
-        url: `http://0.0.0.0:${PORT}`
+async function startServer() {
+    // Initialize the Firestore data layer (falls back to JSON if unavailable)
+    await dataLoader.init();
+
+    app.listen(PORT, '0.0.0.0', () => {
+        const ds = dataLoader.getDataSource();
+        logger.info(`NG Admissions API running`, {
+            port: PORT,
+            env:  NODE_ENV,
+            rules: listRuleIds().length,
+            schools: ds.schools,
+            dataSource: ds.source,
+            url: `http://0.0.0.0:${PORT}`
+        });
+        logger.info(`Browser app: http://localhost:${PORT}/app.html`);
+        logger.info(`Health check: http://localhost:${PORT}/api/health`);
     });
-    logger.info(`Browser app: http://localhost:${PORT}/app.html`);
-    logger.info(`Health check: http://localhost:${PORT}/api/health`);
+}
+
+startServer().catch(err => {
+    logger.error('Failed to start server: %s', err.message);
+    process.exit(1);
 });
 
 module.exports = app;  // for testing
