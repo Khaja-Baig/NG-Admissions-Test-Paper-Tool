@@ -95,6 +95,11 @@ app.use((req, res, next) => {
 // ── Static files (serve the browser app) ────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..')));
 
+// Redirect root to app.html
+app.get('/', (req, res) => {
+    res.redirect('/app.html');
+});
+
 // ============================================================================
 // INPUT VALIDATION HELPERS
 // ============================================================================
