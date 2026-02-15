@@ -14,6 +14,7 @@
 //   GET  /api/schools/:id/config        — full concept/slot config for a school
 //   GET  /api/schools/:id/slots         — flat slot array (paper blueprint)
 //   GET  /api/display-config            — conceptExplanations, titles, schoolFullNames
+//   POST /api/papers/generate           — generate a full paper  { school }
 //
 // ============================================================================
 
@@ -159,6 +160,99 @@ app.get('/api/display-config', (req, res) => {
         conceptExplanations:  displayConfig.conceptExplanations,
         conceptDisplayTitles: displayConfig.conceptDisplayTitles,
         schoolFullNames:      displayConfig.schoolFullNames
+    });
+});
+
+// ---------- Papers (batch generation) ---------------------------------------
+
+/**
+ * POST /api/papers/generate
+ * Body: { school: 'SOP' }
+ *
+ * Generates a complete test paper (all 16 slots) for the given school in one call.
+ * Returns questions grouped by concept, with formatted text, answers, and metadata.
+ */
+app.post('/api/papers/generate', (req, res) => {
+    const { school } = req.body || {};
+
+    if (!school) {
+        return res.status(400).json({ error: 'Missing required field: "school"' });
+    }
+
+    const slots = getSlots(school);
+    if (!slots) {
+        return res.status(404).json({ error: `School "${school}" not found. Valid: ${listSchools().join(', ')}` });
+    }
+
+    const schoolLabel = schoolLabels[school] || school;
+    const schoolFullName = displayConfig.schoolFullNames[school] || schoolLabel;
+
+    // Generate all questions
+    const questions = [];
+    const conceptOrder = [];
+    const conceptSeen = {};
+
+    for (const slot of slots) {
+        const rule = getRule(slot.ruleId);
+        if (!rule) {
+            return res.status(500).json({ error: `Rule "${slot.ruleId}" not found in registry` });
+        }
+
+        try {
+            const generated = rule.generateForDifficulty(slot.difficulty);
+
+            // Format the question text
+            let formattedQuestion = '';
+            if (rule.formatQuestion && generated.questionData) {
+                formattedQuestion = rule.formatQuestion(generated.questionData);
+            }
+
+            // Track concept order (first occurrence)
+            if (!conceptSeen[slot.concept]) {
+                conceptSeen[slot.concept] = true;
+                conceptOrder.push(slot.concept);
+            }
+
+            questions.push({
+                slotLabel:   slot.label,
+                concept:     slot.concept,
+                ruleId:      slot.ruleId,
+                ruleName:    rule.name,
+                difficulty:  slot.difficulty,
+                answerType:  rule.answerType,
+                questionData: generated.questionData,
+                answer:      generated.answer,
+                formattedQuestion
+            });
+        } catch (err) {
+            return res.status(500).json({
+                error: `Failed to generate question for slot "${slot.label}" (${slot.ruleId}): ${err.message}`
+            });
+        }
+    }
+
+    // Group by concept for structured output
+    const byConcept = {};
+    for (const q of questions) {
+        if (!byConcept[q.concept]) {
+            byConcept[q.concept] = {
+                conceptTitle: displayConfig.conceptDisplayTitles[q.concept] || q.concept,
+                explanation:  displayConfig.conceptExplanations[q.concept] || [],
+                questions:    []
+            };
+        }
+        byConcept[q.concept].questions.push(q);
+    }
+
+    res.json({
+        school:         school,
+        schoolLabel:    schoolLabel,
+        schoolFullName: schoolFullName,
+        totalQuestions:  questions.length,
+        conceptOrder:   conceptOrder,
+        concepts:       byConcept,
+        // Flat array for easy iteration
+        allQuestions:   questions
     });
 });
 
