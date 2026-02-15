@@ -1,8 +1,14 @@
-# Generated bundle (rebuild with: bash build.sh)
+# Generated bundle (rebuild with: npm run build)
 rules-bundle.js
 
 # Node
 node_modules/
+
+# Environment (NEVER commit secrets)
+.env
+
+# Logs
+logs/
 
 # OS
 .DS_Store

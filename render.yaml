@@ -1,0 +1,28 @@
+# ============================================================================
+# Render.com deployment configuration
+# ============================================================================
+# Docs: https://render.com/docs/blueprint-spec
+# ============================================================================
+
+services:
+  - type: web
+    name: ng-admissions-api
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: CORS_ORIGIN
+        sync: false   # set manually in Render dashboard
+      - key: RATE_LIMIT_MAX_REQUESTS
+        value: 100
+      - key: RATE_LIMIT_GENERATE_MAX
+        value: 30
+      - key: LOG_LEVEL
+        value: info
+    healthCheckPath: /api/health
+    autoDeploy: true

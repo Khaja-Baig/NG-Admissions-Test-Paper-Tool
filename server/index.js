@@ -7,9 +7,11 @@
 // Start:   npm start   (or  node server/index.js)
 //
 // Endpoints:
+//   GET  /api/health                    — health check (uptime, version, rules)
 //   GET  /api/rules                     — list all rules (id, name, concept, tags, …)
 //   GET  /api/rules/:id                 — single rule metadata
 //   POST /api/rules/:id/generate        — generate a question  { difficulty?, params? }
+//   POST /api/rules/:id/generate-batch  — generate N questions { difficulty, count }
 //   GET  /api/schools                   — list all schools with labels
 //   GET  /api/schools/:id/config        — full concept/slot config for a school
 //   GET  /api/schools/:id/slots         — flat slot array (paper blueprint)
@@ -18,9 +20,14 @@
 //
 // ============================================================================
 
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
+require('dotenv').config();
+
+const express    = require('express');
+const cors       = require('cors');
+const path       = require('path');
+const helmet     = require('helmet');
+const rateLimit  = require('express-rate-limit');
+const logger     = require('./logger');
 
 // --- Rule engine imports (CommonJS, same modules the browser bundle uses) ---
 const { getRule, listRules, listRuleIds } = require('../rules/ruleRegistry');
@@ -30,10 +37,46 @@ const { createOptions, shuffle } = require('../rules/utils');
 const { generateMCQOptions, shuffleOptionsWithAnswer } = require('../rules/mcqHelpers');
 
 const app  = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT, 10) || 3000;
+const NODE_ENV = process.env.NODE_ENV || 'development';
 
-app.use(cors());
-app.use(express.json());
+// ── Security headers (helmet) ───────────────────────────────────────────────
+app.use(helmet({
+    contentSecurityPolicy: false,   // allow inline scripts in app.html for now
+    crossOriginEmbedderPolicy: false
+}));
+
+// ── CORS ────────────────────────────────────────────────────────────────────
+const corsOrigin = process.env.CORS_ORIGIN || '*';
+app.use(cors({
+    origin: corsOrigin === '*' ? true : corsOrigin.split(',').map(s => s.trim())
+}));
+
+app.use(express.json({ limit: '1mb' }));
+
+// ── Rate limiting ───────────────────────────────────────────────────────────
+const windowMs = parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000;
+
+// General API limiter
+const apiLimiter = rateLimit({
+    windowMs,
+    max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests — please try again later.' }
+});
+
+// Stricter limiter for generation endpoints (expensive operations)
+const generateLimiter = rateLimit({
+    windowMs,
+    max: parseInt(process.env.RATE_LIMIT_GENERATE_MAX, 10) || 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Generation rate limit reached — please wait before generating more.' }
+});
+
+// Apply general limiter to all /api/ routes
+app.use('/api/', apiLimiter);
 
 // ── Request logging middleware ──────────────────────────────────────────────
 app.use((req, res, next) => {
@@ -43,7 +86,7 @@ app.use((req, res, next) => {
     res.end = function (...args) {
         const ms = Date.now() - start;
         const body = req.method === 'POST' ? ` ${JSON.stringify(req.body)}` : '';
-        console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}${body} → ${res.statusCode} (${ms}ms)`);
+        logger.info(`${req.method} ${req.originalUrl}${body} → ${res.statusCode} (${ms}ms)`);
         origEnd(...args);
     };
     next();
@@ -53,8 +96,77 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname, '..')));
 
 // ============================================================================
+// INPUT VALIDATION HELPERS
+// ============================================================================
+
+const VALID_SCHOOLS = new Set(listSchools());
+const VALID_RULE_IDS = new Set(listRuleIds());
+
+function validateSchool(school) {
+    if (!school || typeof school !== 'string') {
+        return 'Missing required field: "school"';
+    }
+    const sanitized = school.trim().toUpperCase();
+    if (!VALID_SCHOOLS.has(sanitized)) {
+        return `Invalid school "${school}". Valid: ${[...VALID_SCHOOLS].join(', ')}`;
+    }
+    return null; // valid
+}
+
+function validateRuleId(id) {
+    if (!id || typeof id !== 'string') {
+        return 'Missing rule ID';
+    }
+    const sanitized = id.trim();
+    if (sanitized.length > 100) return 'Rule ID too long';
+    if (!/^[a-z0-9_]+$/.test(sanitized)) return `Invalid rule ID format: "${id}"`;
+    return null; // format valid (existence checked via getRule)
+}
+
+function validateDifficulty(difficulty, rule) {
+    if (!difficulty) return null; // optional, will use default
+    if (typeof difficulty !== 'string') return 'Difficulty must be a string';
+    const sanitized = difficulty.trim().toLowerCase();
+    const validDiffs = Object.keys(rule.difficultyConfig || {});
+    if (!validDiffs.includes(sanitized)) {
+        return `Unknown difficulty "${difficulty}" for rule "${rule.id}". Valid: ${validDiffs.join(', ')}`;
+    }
+    return null; // valid
+}
+
+function validateCount(count) {
+    const n = parseInt(count, 10);
+    if (isNaN(n) || n < 1) return 'Count must be a positive integer';
+    if (n > 100) return 'Count cannot exceed 100';
+    return null; // valid
+}
+
+// ============================================================================
 // API ROUTES
 // ============================================================================
+
+// ---------- Health check ----------------------------------------------------
+
+const pkg = require('../package.json');
+const startTime = Date.now();
+
+/**
+ * GET /api/health
+ * Returns server health information.
+ */
+app.get('/api/health', (req, res) => {
+    const uptimeMs = Date.now() - startTime;
+    res.json({
+        status:    'ok',
+        version:   pkg.version,
+        uptime:    `${Math.floor(uptimeMs / 1000)}s`,
+        uptimeMs,
+        env:       NODE_ENV,
+        rules:     listRuleIds().length,
+        schools:   listSchools().length,
+        timestamp: new Date().toISOString()
+    });
+});
 
 // ---------- Rules -----------------------------------------------------------
 
@@ -81,6 +193,9 @@ app.get('/api/rules', (req, res) => {
  * Returns full metadata for a single rule.
  */
 app.get('/api/rules/:id', (req, res) => {
+    const idErr = validateRuleId(req.params.id);
+    if (idErr) return res.status(400).json({ error: idErr });
+
     const rule = getRule(req.params.id);
     if (!rule) return res.status(404).json({ error: `Rule "${req.params.id}" not found` });
 
@@ -101,12 +216,22 @@ app.get('/api/rules/:id', (req, res) => {
  * Body (optional): { difficulty: 'easy', params: { ... } }
  * Returns a generated question + answer.
  */
-app.post('/api/rules/:id/generate', (req, res) => {
+app.post('/api/rules/:id/generate', generateLimiter, (req, res) => {
+    const idErr = validateRuleId(req.params.id);
+    if (idErr) return res.status(400).json({ error: idErr });
+
     const rule = getRule(req.params.id);
     if (!rule) return res.status(404).json({ error: `Rule "${req.params.id}" not found` });
 
     try {
         const { difficulty, params } = req.body || {};
+
+        // Validate difficulty if provided
+        if (difficulty) {
+            const diffErr = validateDifficulty(difficulty, rule);
+            if (diffErr) return res.status(400).json({ error: diffErr });
+        }
+
         let question;
 
         if (difficulty && rule.generateForDifficulty) {
@@ -182,13 +307,27 @@ function buildDisplayOptions(rule, questionData, answer) {
  * Body: { difficulty: 'easy', count: 12 }
  * Returns an array of generated questions with display options.
  */
-app.post('/api/rules/:id/generate-batch', (req, res) => {
+app.post('/api/rules/:id/generate-batch', generateLimiter, (req, res) => {
+    const idErr = validateRuleId(req.params.id);
+    if (idErr) return res.status(400).json({ error: idErr });
+
     const rule = getRule(req.params.id);
     if (!rule) return res.status(404).json({ error: `Rule "${req.params.id}" not found` });
 
     const { difficulty, count = 1 } = req.body || {};
-    const n = Math.min(Math.max(parseInt(count) || 1, 1), 100);
+
+    // Validate count
+    const countErr = validateCount(count);
+    if (countErr) return res.status(400).json({ error: countErr });
+
+    // Validate difficulty
     const diffKey = difficulty || Object.keys(rule.difficultyConfig || {})[0];
+    if (difficulty) {
+        const diffErr = validateDifficulty(difficulty, rule);
+        if (diffErr) return res.status(400).json({ error: diffErr });
+    }
+
+    const n = Math.min(Math.max(parseInt(count) || 1, 1), 100);
 
     const questions = [];
     let attempts = 0;
@@ -244,6 +383,9 @@ app.get('/api/schools', (req, res) => {
  * Returns the concept configuration for a school (for dropdown population).
  */
 app.get('/api/schools/:id/config', (req, res) => {
+    const schoolErr = validateSchool(req.params.id);
+    if (schoolErr) return res.status(400).json({ error: schoolErr });
+
     const config = getConceptConfig(req.params.id);
     if (!config) return res.status(404).json({ error: `School "${req.params.id}" not found` });
     res.json({ school: req.params.id, concepts: config });
@@ -254,6 +396,9 @@ app.get('/api/schools/:id/config', (req, res) => {
  * Returns the flat slot array (paper blueprint) for a school.
  */
 app.get('/api/schools/:id/slots', (req, res) => {
+    const schoolErr = validateSchool(req.params.id);
+    if (schoolErr) return res.status(400).json({ error: schoolErr });
+
     const slots = getSlots(req.params.id);
     if (!slots) return res.status(404).json({ error: `School "${req.params.id}" not found` });
     res.json({ school: req.params.id, totalSlots: slots.length, slots });
@@ -282,16 +427,17 @@ app.get('/api/display-config', (req, res) => {
  * Generates a complete test paper (all 16 slots) for the given school in one call.
  * Returns questions grouped by concept, with formatted text, answers, and metadata.
  */
-app.post('/api/papers/generate', (req, res) => {
+app.post('/api/papers/generate', generateLimiter, (req, res) => {
     const { school } = req.body || {};
 
-    if (!school) {
-        return res.status(400).json({ error: 'Missing required field: "school"' });
+    const schoolErr = validateSchool(school);
+    if (schoolErr) {
+        return res.status(400).json({ error: schoolErr });
     }
 
     const slots = getSlots(school);
     if (!slots) {
-        return res.status(404).json({ error: `School "${school}" not found. Valid: ${listSchools().join(', ')}` });
+        return res.status(404).json({ error: `School "${school}" not found` });
     }
 
     const schoolLabel = schoolLabels[school] || school;
@@ -387,13 +533,43 @@ app.post('/api/papers/generate', (req, res) => {
 });
 
 // ============================================================================
+// GLOBAL ERROR HANDLER
+// ============================================================================
+
+// 404 for unknown API routes
+app.use('/api/{*path}', (req, res) => {
+    res.status(404).json({ error: `Endpoint not found: ${req.method} ${req.originalUrl}` });
+});
+
+// Catch-all error handler
+app.use((err, req, res, next) => {
+    logger.error('Unhandled error', {
+        method: req.method,
+        path:   req.originalUrl,
+        error:  err.message,
+        stack:  NODE_ENV === 'development' ? err.stack : undefined
+    });
+    res.status(500).json({
+        error: NODE_ENV === 'production'
+            ? 'Internal server error'
+            : err.message
+    });
+});
+
+// ============================================================================
 // START SERVER
 // ============================================================================
 
 app.listen(PORT, () => {
-    console.log(`\n🚀 NG Admissions API running on http://localhost:${PORT}`);
-    console.log(`   API docs:  GET /api/rules, /api/schools, /api/display-config`);
-    console.log(`   Browser:   http://localhost:${PORT}/app.html\n`);
+    logger.info(`NG Admissions API running`, {
+        port: PORT,
+        env:  NODE_ENV,
+        rules: listRuleIds().length,
+        schools: listSchools().length,
+        url: `http://localhost:${PORT}`
+    });
+    logger.info(`Browser app: http://localhost:${PORT}/app.html`);
+    logger.info(`Health check: http://localhost:${PORT}/api/health`);
 });
 
 module.exports = app;  // for testing
