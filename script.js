@@ -1,277 +1,26 @@
 // ========================================
-// UTILITY FUNCTIONS
+// UTILITY ALIASES  (loaded from rules-bundle.js → window.RuleEngine)
 // ========================================
+// All shared utilities now live in rules/utils.js and rules/mcqHelpers.js.
+// They are bundled into RuleEngine and aliased here for convenience.
 
-// Generate random integer between min and max (inclusive)
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-// Check if a number has trailing zeros (like 120, 450)
-function hasTrailingZeros(num) {
-    const str = num.toString();
-    return str.endsWith('0') && str.length > 1;
-}
-
-// Generate a random integer without trailing zeros
-function randomIntNoTrailing(min, max) {
-    let num;
-    let attempts = 0;
-    do {
-        num = randomInt(min, max);
-        attempts++;
-    } while (hasTrailingZeros(num) && attempts < 100);
-    return num;
-}
-
-// Shuffle array
-function shuffle(array) {
-    const arr = [...array];
-    for (let i = arr.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-    }
-    return arr;
-}
-
-// Generate unique distractors
-function generateDistractors(correct, count = 3) {
-    const distractors = new Set();
-    const range = Math.max(Math.abs(correct * 0.3), 10);
-    
-    let attempts = 0;
-    while (distractors.size < count && attempts < 1000) {
-        let distractor;
-        const offset = randomInt(1, Math.ceil(range));
-        
-        if (Math.random() < 0.5) {
-            distractor = correct + offset;
-        } else {
-            distractor = correct - offset;
-        }
-        
-        if (distractor > 0 && distractor !== correct && !hasTrailingZeros(distractor)) {
-            distractors.add(distractor);
-        }
-        attempts++;
-    }
-    
-    return Array.from(distractors).slice(0, count);
-}
-
-// Create shuffled options with correct answer
-function createOptions(correct) {
-    const distractors = generateDistractors(correct, 3);
-    const options = [correct, ...distractors];
-    const shuffled = shuffle(options);
-    
-    const correctIndex = shuffled.indexOf(correct);
-    const correctLetter = String.fromCharCode(65 + correctIndex); // A, B, C, D
-    
-    return { options: shuffled, correctLetter };
-}
-
-// Store generated questions to avoid duplicates
-let generatedQuestions = new Set();
+const randomInt              = RuleEngine.randomInt;
+const hasTrailingZeros       = RuleEngine.hasTrailingZeros;
+const shuffle                = RuleEngine.shuffle;
+const generateDistractors    = RuleEngine.generateDistractors;
+const createOptions          = RuleEngine.createOptions;
+const generateMCQOptions     = RuleEngine.generateMCQOptions;
+const shuffleOptionsWithAnswer = RuleEngine.shuffleOptionsWithAnswer;
 
 // ========================================
-// SCHOOL → CONCEPT → DIFFICULTY CONFIG
+// RULE ENGINE (loaded via rules-bundle.js → window.RuleEngine)
 // ========================================
-// Master configuration object.
-// Structure: school → concept → difficulties[]
-// Each difficulty has a `value` (passed to generator functions) and a `label` (shown in dropdown).
-// Generator functions (generateNumberPattern, etc.) are NOT modified — they still receive the difficulty value.
-//
-// To add a new school/concept/difficulty, just edit this object.
-// To add a new question template, modify the corresponding generator function
-// (e.g., generateNumberPattern) and add a new difficulty branch there,
-// then reference that difficulty value here.
-
-const schoolConfig = {
-    'SOP': {
-        label: 'School of Programming (SOP)',
-        concepts: {
-            'number patterns': {
-                label: 'Number Patterns',
-                generator: 'generateNumberPattern',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'percentages': {
-                label: 'Percentages',
-                generator: 'generatePercentage',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium only', label: 'Medium' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'work and time': {
-                label: 'Work and Time',
-                generator: 'generateWorkTime',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium only', label: 'Medium' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'linear equations in two variables': {
-                label: 'Linear Equations in Two Variables',
-                generator: 'generateLinearEquation',
-                difficulties: [
-                    { value: 'easy 1', label: 'Easy 1' },
-                    { value: 'easy 2', label: 'Easy 2' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard 1', label: 'Hard 1' },
-                    { value: 'hard 2', label: 'Hard 2' }
-                ]
-            }
-        }
-    },
-    'SOB': {
-        label: 'School of Business (SOB)',
-        concepts: {
-            'number patterns': {
-                label: 'Number Patterns',
-                generator: 'generateNumberPattern',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'percentages': {
-                label: 'Percentages',
-                generator: 'generatePercentageSOB',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'profit and loss': {
-                label: 'Profit and Loss',
-                generator: 'generateProfitLoss',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'simple interest': {
-                label: 'Simple Interest',
-                generator: 'generateSimpleInterest',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            }
-        }
-    },
-    'SOF': {
-        label: 'School of Finance (SOF)',
-        concepts: {
-            'number patterns': {
-                label: 'Number Patterns',
-                generator: 'generateNumberPattern',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'percentages': {
-                label: 'Percentages',
-                generator: 'generatePercentageSOB',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'profit and loss': {
-                label: 'Profit and Loss',
-                generator: 'generateProfitLoss',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'simple interest': {
-                label: 'Simple Interest',
-                generator: 'generateSimpleInterest',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            }
-        }
-    },
-    'BCA': {
-        label: 'BCA',
-        concepts: {
-            'number patterns': {
-                label: 'Number Patterns',
-                generator: 'generateNumberPattern',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'percentages': {
-                label: 'Percentages',
-                generator: 'generatePercentage',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium only', label: 'Medium' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'work and time': {
-                label: 'Work and Time',
-                generator: 'generateWorkTime',
-                difficulties: [
-                    { value: 'easy only', label: 'Easy' },
-                    { value: 'medium only', label: 'Medium' },
-                    { value: 'hard only', label: 'Hard' }
-                ]
-            },
-            'linear equations in two variables': {
-                label: 'Linear Equations in Two Variables',
-                generator: 'generateLinearEquation',
-                difficulties: [
-                    { value: 'easy 1', label: 'Easy 1' },
-                    { value: 'easy 2', label: 'Easy 2' },
-                    { value: 'medium 1', label: 'Medium 1' },
-                    { value: 'medium 2', label: 'Medium 2' },
-                    { value: 'hard 1', label: 'Hard 1' },
-                    { value: 'hard 2', label: 'Hard 2' }
-                ]
-            }
-        }
-    }
-};
-
-// Map generator function names to actual functions (resolved after functions are defined)
-let generatorMap = {};
+// RuleEngine.getRule(ruleId)        — get a rule object
+// RuleEngine.getSlots(school)       — flat array of { concept, ruleId, difficulty, label }
+// RuleEngine.getConceptConfig(school) — concept → { label, slots[] } for dropdowns
+// RuleEngine.schoolLabels           — { SOP: 'School of Programming (SOP)', ... }
+// RuleEngine.schoolRuleMap          — full mapping
+// ========================================
 
 // ========================================
 // CASCADING DROPDOWN FUNCTIONS
@@ -281,14 +30,14 @@ let generatorMap = {};
 function updateConceptDropdown() {
     const schoolKey = document.getElementById('school').value;
     const conceptSelect = document.getElementById('concept');
-    const concepts = schoolConfig[schoolKey]?.concepts || {};
+    const conceptConfig = RuleEngine.getConceptConfig(schoolKey) || {};
 
     conceptSelect.innerHTML = '';
 
-    Object.keys(concepts).forEach(conceptKey => {
+    Object.keys(conceptConfig).forEach(conceptKey => {
         const option = document.createElement('option');
         option.value = conceptKey;
-        option.textContent = concepts[conceptKey].label;
+        option.textContent = conceptConfig[conceptKey].label;
         conceptSelect.appendChild(option);
     });
 
@@ -297,858 +46,25 @@ function updateConceptDropdown() {
 }
 
 // Update Difficulty dropdown based on selected School + Concept
+// Each option value is the slot index within the concept's slots array,
+// which maps to a specific ruleId + difficulty key.
 function updateDifficultyDropdown() {
     const schoolKey = document.getElementById('school').value;
     const conceptKey = document.getElementById('concept').value;
     const difficultySelect = document.getElementById('difficulty');
 
-    const difficulties = schoolConfig[schoolKey]?.concepts[conceptKey]?.difficulties || [];
+    const conceptConfig = RuleEngine.getConceptConfig(schoolKey);
+    const slots = conceptConfig?.[conceptKey]?.slots || [];
 
     difficultySelect.innerHTML = '';
 
-    difficulties.forEach(d => {
+    slots.forEach((slot, idx) => {
         const option = document.createElement('option');
-        option.value = d.value;
-        option.textContent = d.label;
+        // Store ruleId|difficulty as the value so generateQuestions can look it up
+        option.value = `${slot.ruleId}|${slot.difficulty}`;
+        option.textContent = slot.label;
         difficultySelect.appendChild(option);
     });
-}
-
-// ========================================
-// NUMBER PATTERNS
-// ========================================
-
-function generateNumberPattern(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy only') {
-                const a = randomIntNoTrailing(1, 50);
-                const d = randomInt(2, 9);
-                const answer = a + 4 * d;
-                
-                const questionKey = `np_easy_${a}_${d}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const sequence = `${a}, ${a + d}, ${a + 2*d}, ${a + 3*d}, ___`;
-                const question = `What will be the next term in the pattern?\n${sequence}`;
-                
-                return { question, answer };
-                
-            } else if (difficulty === 'medium 1') {
-                const a = randomIntNoTrailing(1, 50);
-                const answer = a + 32; // +5, +7, +9, +11 = total 32, but next is +11 from last
-                // Actually: a, a+5, a+12, a+21, a+32
-                const seq = [a, a+5, a+12, a+21];
-                
-                const questionKey = `np_m1_${a}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const sequence = seq.join(', ') + ', ___';
-                const question = `What will be the next term in the pattern?\n${sequence}`;
-                
-                return { question, answer };
-                
-            } else if (difficulty === 'medium 2') {
-                const n = randomInt(2, 8);
-                const answer = (n + 4) * (n + 4);
-                
-                const questionKey = `np_m2_${n}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const sequence = `${n*n}, ${(n+1)*(n+1)}, ${(n+2)*(n+2)}, ${(n+3)*(n+3)}, ___`;
-                const question = `What will be the next term in the pattern?\n${sequence}`;
-                
-                return { question, answer };
-                
-            } else if (difficulty === 'hard 1' || difficulty === 'hard 2' || difficulty === 'hard only') {
-                const x1 = randomInt(1, 5);
-                const x2 = randomInt(1, 5);
-                const x3 = x1 * 2;
-                const x4 = x2 * 3;
-                const x5 = x3 * 2;
-                const answer = x4 * 3;
-                
-                const questionKey = `np_hard_${x1}_${x2}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const sequence = `${x1}, ${x2}, ${x3}, ${x4}, ${x5}, ___`;
-                const question = `What will be the next term in the pattern?\n${sequence}`;
-                
-                return { question, answer };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// PERCENTAGES
-// ========================================
-
-function generatePercentage(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy 1' || difficulty === 'easy 2' || difficulty === 'easy only') {
-                const X = randomInt(20, 100);
-                const Y = randomInt(5, X - 5);
-                const notFresh = X - Y;
-                const percent = (notFresh * 100) / X;
-                
-                if (percent !== Math.floor(percent)) continue;
-                
-                const questionKey = `pct_easy_${X}_${Y}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `I bought ${X} apples, out of which ${Y} were fresh.\nWhat percentage of apples are not fresh?`;
-                
-                return { question, answer: Math.floor(percent) };
-                
-            } else if (difficulty === 'medium only' || difficulty === 'medium 1' || difficulty === 'medium 2') {
-                const names = ['Rahul', 'Priya', 'Arman', 'Sita', 'Rohan'];
-                const name = names[randomInt(0, names.length - 1)];
-                
-                const X = randomInt(30, 100);
-                const Y = randomInt(5, X - 10);
-                const Z = randomInt(5, 30);
-                
-                const finalRoses = Y + Z;
-                const finalTotal = X + Z;
-                const percent = (finalRoses * 100) / finalTotal;
-                
-                if (percent !== Math.floor(percent)) continue;
-                
-                const questionKey = `pct_med_${X}_${Y}_${Z}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `${name} bought ${X} flowers, out of which ${Y} are roses.\nIf ${name === 'Priya' || name === 'Sita' ? 'she' : 'he'} bought ${Z} more roses, then what is the percentage of roses?`;
-                
-                return { question, answer: Math.floor(percent) };
-                
-            } else if (difficulty === 'hard only' || difficulty === 'hard 1' || difficulty === 'hard 2') {
-                const X = randomInt(20, 50);
-                const Y = randomInt(5, 30);
-                const allowedP = [20, 25, 28, 34, 38, 40, 45, 50];
-                const P = allowedP[randomInt(0, allowedP.length - 1)];
-                
-                // Solve: (Y + B) / (X + Y + B) = P/100
-                // 100(Y + B) = P(X + Y + B)
-                // 100Y + 100B = PX + PY + PB
-                // 100B - PB = PX + PY - 100Y
-                // B(100 - P) = PX + PY - 100Y
-                // B = (PX + PY - 100Y) / (100 - P)
-                
-                const numerator = P * X + P * Y - 100 * Y;
-                const denominator = 100 - P;
-                
-                if (denominator === 0 || numerator <= 0) continue;
-                if (numerator % denominator !== 0) continue;
-                
-                const B = numerator / denominator;
-                if (B <= 0 || B !== Math.floor(B)) continue;
-                
-                const questionKey = `pct_hard_${X}_${Y}_${P}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `Arman has ${X} red ribbons and ${Y} blue ribbons.\nHow many blue ribbons should he buy so that the percentage of blue ribbons becomes ${P}%?`;
-                
-                return { question, answer: B };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// PERCENTAGES (SOB / SOF)
-// ========================================
-
-function generatePercentageSOB(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-
-        try {
-            if (difficulty === 'easy 1' || difficulty === 'easy 2' || difficulty === 'easy only') {
-                // Context variations for "X out of total, find percentage"
-                const contexts = [
-                    { template: (X, Y) => `In a class of ${X} students, ${Y} students are absent.\nWhat is the percentage of absent students?` },
-                    { template: (X, Y) => `In a class of ${X} students, ${Y} are girls.\nWhat is the percentage of girls in the class?` },
-                    { template: (X, Y) => `Out of ${X} students who appeared for a test, ${Y} students failed.\nWhat is the percentage of students who failed?` },
-                    { template: (X, Y) => `A school has ${X} teachers. ${Y} of them teach science.\nWhat percentage of teachers teach science?` },
-                    { template: (X, Y) => `In a garden, there are ${X} flowers. ${Y} of them are red.\nWhat is the percentage of red flowers?` },
-                    { template: (X, Y) => `A library has ${X} books. ${Y} of them are fiction.\nWhat percentage of books are fiction?` }
-                ];
-
-                const X = randomInt(30, 100);
-                const Y = randomInt(5, X - 5);
-                const percent = (Y * 100) / X;
-
-                if (percent !== Math.floor(percent)) continue;
-                if (hasTrailingZeros(Math.floor(percent))) continue;
-
-                const questionKey = `pct_sob_easy_${X}_${Y}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-
-                const ctx = contexts[randomInt(0, contexts.length - 1)];
-                const question = ctx.template(X, Y);
-
-                return { question, answer: Math.floor(percent) };
-
-            } else if (difficulty === 'medium 1') {
-                // "Price is ₹P, discount/tax of D%. Find the amount."
-                const items = ['jacket', 'shirt', 'bag', 'pair of shoes', 'watch', 'saree', 'kurta', 'laptop bag', 'sweater', 'blazer'];
-                const actions = [
-                    { verb: 'gives a discount of', label: 'discount' },
-                    { verb: 'charges a tax of', label: 'tax' },
-                    { verb: 'offers a cashback of', label: 'cashback' }
-                ];
-
-                const item = items[randomInt(0, items.length - 1)];
-                const action = actions[randomInt(0, actions.length - 1)];
-                const P = randomIntNoTrailing(200, 2000);
-                const D = randomInt(5, 30);
-                const amount = (P * D) / 100;
-
-                if (amount !== Math.floor(amount)) continue;
-                if (hasTrailingZeros(Math.floor(amount))) continue;
-
-                const questionKey = `pct_sob_m1_${P}_${D}_${action.label}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-
-                const question = `The price of a ${item} is ₹${P}. The shopkeeper ${action.verb} ${D}%.\nWhat is the amount of the ${action.label}?`;
-
-                return { question, answer: Math.floor(amount) };
-
-            } else if (difficulty === 'medium 2') {
-                // "Got M marks out of T. What is the percentage?"
-                const names = ['Aman', 'Priya', 'Rohan', 'Sita', 'Kavya', 'Arjun', 'Meera', 'Vikram'];
-                const subjects = ['a test', 'an exam', 'a quiz', 'a maths test', 'a science exam', 'a class test'];
-
-                const name = names[randomInt(0, names.length - 1)];
-                const subject = subjects[randomInt(0, subjects.length - 1)];
-                const T = randomIntNoTrailing(25, 100);
-                const M = randomInt(10, T - 5);
-                const percent = (M * 100) / T;
-
-                if (percent !== Math.floor(percent)) continue;
-                if (hasTrailingZeros(Math.floor(percent))) continue;
-
-                const questionKey = `pct_sob_m2_${M}_${T}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-
-                const pronoun = (name === 'Priya' || name === 'Sita' || name === 'Kavya' || name === 'Meera') ? 'her' : 'his';
-                const question = `In ${subject}, ${name} got ${M} marks out of ${T}.\nWhat is ${pronoun} percentage?`;
-
-                return { question, answer: Math.floor(percent) };
-
-            } else if (difficulty === 'hard only' || difficulty === 'hard 1' || difficulty === 'hard 2') {
-                // "Population/value changes by R%. Find new value."
-                const scenarios = [
-                    { template: (P, R, dir) => `The population of a village is ${P}.\nIn one year, it ${dir} by ${R}%.\nWhat will be the new population?` },
-                    { template: (P, R, dir) => `The population of a town is ${P}.\nIn one year, it ${dir} by ${R}%.\nWhat will be the new population?` },
-                    { template: (P, R, dir) => `A company has ${P} employees.\nThis year, the number ${dir} by ${R}%.\nWhat is the new number of employees?` },
-                    { template: (P, R, dir) => `The number of students in a school is ${P}.\nNext year, it ${dir} by ${R}%.\nWhat will be the new number of students?` },
-                    { template: (P, R, dir) => `The price of a plot of land is ₹${P}.\nIn one year, the price ${dir} by ${R}%.\nWhat is the new price?` }
-                ];
-
-                const P = randomIntNoTrailing(500, 5000);
-                const R = randomInt(5, 25);
-                const change = (P * R) / 100;
-
-                if (change !== Math.floor(change)) continue;
-
-                const isIncrease = Math.random() < 0.5;
-                const direction = isIncrease ? 'increased' : 'decreased';
-                const answer = isIncrease ? P + Math.floor(change) : P - Math.floor(change);
-
-                if (answer <= 0) continue;
-                if (hasTrailingZeros(answer)) continue;
-
-                const questionKey = `pct_sob_hard_${P}_${R}_${direction}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-
-                const scenario = scenarios[randomInt(0, scenarios.length - 1)];
-                const question = scenario.template(P, R, direction);
-
-                return { question, answer };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// WORK AND TIME
-// ========================================
-
-function generateWorkTime(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy 1' || difficulty === 'easy 2' || difficulty === 'easy only') {
-                const G = randomInt(10, 50);
-                const T1 = randomInt(2, 8);
-                const M1 = randomInt(5, 30);
-                let T2 = randomInt(2, 8);
-                if (T2 === T1) continue; // avoid trivial question where T2 equals T1
-                
-                const M2 = (T1 * M1) / T2;
-                if (M2 !== Math.floor(M2) || M2 <= 0) continue;
-                
-                const questionKey = `wt_easy_${G}_${T1}_${M1}_${T2}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `To fill ${G} glasses of water, ${T1} taps take ${M1} minutes.\nThen with ${T2} taps, how much time is needed to fill ${G} glasses?`;
-                
-                return { question, answer: Math.floor(M2) };
-                
-            } else if (difficulty === 'medium only' || difficulty === 'medium 1' || difficulty === 'medium 2') {
-                const G1 = randomInt(10, 40);
-                const T1 = randomInt(2, 6);
-                const M1 = randomInt(5, 25);
-                const G2 = randomInt(10, 40);
-                const M2 = randomInt(5, 25);
-                
-                const T2 = (T1 * M1 * G2) / (G1 * M2);
-                if (T2 !== Math.floor(T2) || T2 <= 0) continue;
-                
-                const questionKey = `wt_med_${G1}_${T1}_${M1}_${G2}_${M2}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `To fill ${G1} glasses, ${T1} taps take ${M1} minutes.\nTo fill ${G2} glasses in ${M2} minutes, how many taps are needed?`;
-                
-                return { question, answer: Math.floor(T2) };
-                
-            } else if (difficulty === 'hard only' || difficulty === 'hard 1' || difficulty === 'hard 2') {
-                const G1 = randomInt(10, 30);
-                const T1 = randomInt(2, 6);
-                const M1 = randomInt(5, 20);
-                const G2 = randomInt(10, 30);
-                const T2 = randomInt(2, 6);
-                
-                const M2 = (T1 * M1 * G2) / (G1 * T2);
-                if (M2 !== Math.floor(M2) || M2 <= 0) continue;
-                
-                const questionKey = `wt_hard_${G1}_${T1}_${M1}_${G2}_${T2}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `To fill ${G1} glasses, ${T1} taps take ${M1} minutes.\nWith ${T2} taps, how much time is needed to fill ${G2} glasses?`;
-                
-                return { question, answer: Math.floor(M2) };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// PROFIT AND LOSS
-// ========================================
-
-function generateProfitLoss(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy 1' || difficulty === 'easy 2' || difficulty === 'easy only') {
-                const CP = randomInt(50, 200);
-                const SP = randomInt(30, 250);
-                
-                if (CP === SP) continue;
-                
-                const questionKey = `pl_easy_${CP}_${SP}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const diff = Math.abs(SP - CP);
-                const type = SP > CP ? 'profit' : 'loss';
-                
-                const question = `Anwar buys a notebook for ₹${CP} and sells it for ₹${SP}.\nDid he make a profit or a loss? How much?`;
-                
-                return { question, answer: diff, type };
-                
-            } else if (difficulty === 'medium 1') {
-                const CP = randomInt(100, 800);
-                const P = randomInt(50, 300);
-                const SP = CP + P;
-                
-                const questionKey = `pl_m1_${CP}_${P}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `Riya buys a chair for ₹${CP}.\nShe wants to make an exact profit of ₹${P}.\nAt what price should she sell the chair?`;
-                
-                return { question, answer: SP };
-                
-            } else if (difficulty === 'medium 2') {
-                const N = randomInt(3, 8);
-                const CP_per = randomInt(20, 60);
-                const SP_total = randomInt(100, 400);
-                
-                const totalCP = N * CP_per;
-                const diff = SP_total - totalCP;
-                
-                if (diff === 0) continue;
-                
-                const questionKey = `pl_m2_${N}_${CP_per}_${SP_total}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const type = diff > 0 ? 'profit' : 'loss';
-                
-                const question = `A trader buys ${N} kg of oranges at ₹${CP_per} per kg\nand sells all the oranges for ₹${SP_total}.\nFind the profit or loss.`;
-                
-                return { question, answer: Math.abs(diff), type };
-                
-            } else if (difficulty === 'hard only' || difficulty === 'hard 1' || difficulty === 'hard 2') {
-                const N = randomInt(10, 20);
-                const CP1 = randomInt(15, 30);
-                const N2 = randomInt(Math.floor(N / 2), N - 2);
-                const SP1 = randomInt(12, 35);
-                const SP2 = randomInt(12, 35);
-                
-                const totalCP = N * CP1;
-                const totalSP = (N2 * SP1) + ((N - N2) * SP2);
-                const diff = totalSP - totalCP;
-                
-                if (diff === 0) continue;
-                
-                const questionKey = `pl_hard_${N}_${CP1}_${N2}_${SP1}_${SP2}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const type = diff > 0 ? 'profit' : 'loss';
-                
-                const question = `A shopkeeper buys ${N} pens at ₹${CP1} per pen.\nHe sells ${N2} pens at ₹${SP1} per pen and\nthe remaining ${N - N2} pens at ₹${SP2} per pen.\nWhat is his total profit or loss?`;
-                
-                return { question, answer: Math.abs(diff), type };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// SIMPLE INTEREST
-// ========================================
-
-function generateSimpleInterest(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy 1' || difficulty === 'easy 2' || difficulty === 'easy only') {
-                const P = randomInt(1000, 10000);
-                const R = randomInt(5, 15);
-                const SI = (P * R) / 100;
-                
-                if (SI !== Math.floor(SI)) continue;
-                
-                const questionKey = `si_easy_${P}_${R}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const names = ['Rahul', 'Priya', 'Arman', 'Sita'];
-                const name = names[randomInt(0, names.length - 1)];
-                
-                const question = `${name} deposits ₹${P} in a bank.\nThe bank gives ${R}% interest per year.\nHow much interest will ${name} get in 1 year?`;
-                
-                return { question, answer: Math.floor(SI) };
-                
-            } else if (difficulty === 'medium 1') {
-                const R = randomInt(5, 15);
-                const T = randomInt(2, 4);
-                const P = randomInt(1000, 8000);
-                const A = P + (P * R * T) / 100;
-                
-                if (A !== Math.floor(A)) continue;
-                
-                const questionKey = `si_m1_${A}_${T}_${R}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `An amount becomes ₹${Math.floor(A)} in ${T} years at ${R}% per year simple interest.\nWhat was the original principal amount?`;
-                
-                return { question, answer: P };
-                
-            } else if (difficulty === 'medium 2') {
-                const P = randomInt(500, 5000);
-                const R = randomInt(10, 30);
-                const T = randomInt(2, 4);
-                const A = P + (P * R * T) / 100;
-                
-                if (A !== Math.floor(A)) continue;
-                
-                const questionKey = `si_m2_${P}_${R}_${T}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const names = ['Rahul', 'Priya', 'Arman'];
-                const name = names[randomInt(0, names.length - 1)];
-                
-                const question = `${name} deposits ₹${P} in a bank\nwhere ${name === 'Priya' ? 'she' : 'he'} gets ${R}% simple interest per year.\nHow much total amount will ${name === 'Priya' ? 'she' : 'he'} have after ${T} years?`;
-                
-                return { question, answer: Math.floor(A) };
-                
-            } else if (difficulty === 'hard only' || difficulty === 'hard 1' || difficulty === 'hard 2') {
-                const P = randomInt(200, 1000);
-                const R = randomInt(10, 30);
-                const T = 1;
-                const SI = (P * R * T) / 100;
-                
-                if (SI !== Math.floor(SI)) continue;
-                
-                const questionKey = `si_hard_${P}_${SI}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `The interest on ₹${P} for 1 year is ₹${Math.floor(SI)}.\nWhat is the annual rate of interest?`;
-                
-                return { question, answer: R };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
-}
-
-// ========================================
-// LINEAR EQUATIONS IN TWO VARIABLES
-// ========================================
-
-function generateLinearEquation(difficulty) {
-    let attempts = 0;
-    while (attempts < 100) {
-        attempts++;
-        
-        try {
-            if (difficulty === 'easy 1') {
-                // Bus capacity problem only
-                const redSeats = randomInt(60, 100);
-                const greenSeats = randomInt(50, 90);
-                const redCount = randomInt(3, 7);
-                const greenCount = randomInt(4, 8);
-                const total = (redSeats * redCount) + (greenSeats * greenCount);
-                
-                const questionKey = `le_easy1_${redSeats}_${greenSeats}_${redCount}_${greenCount}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `A Red bus has ${redSeats} seats, whereas Green bus has ${greenSeats} seats.\nThe school arranges for ${redCount} Red buses and ${greenCount} Green buses.\nHow many people can travel in total?`;
-                
-                return { question, answer: total };
-                
-            } else if (difficulty === 'easy 2') {
-                // Box capacity problem only
-                const yellowCap = randomInt(60, 100);
-                const brownCap = randomInt(50, 90);
-                const yellowCount = randomInt(4, 8);
-                const brownCount = randomInt(5, 10);
-                const total = (yellowCap * yellowCount) + (brownCap * brownCount);
-                
-                const questionKey = `le_easy2_${yellowCap}_${brownCap}_${yellowCount}_${brownCount}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const names = ['Rahul', 'Priya', 'Arman'];
-                const name = names[randomInt(0, names.length - 1)];
-                
-                const question = `${name} has two types of boxes.\nYellow boxes can hold ${yellowCap} books each and Brown boxes can hold ${brownCap} books each. ${name === 'Priya' ? 'She' : 'He'} uses ${yellowCount} Yellow boxes and ${brownCount} Brown boxes.\nHow many books can ${name === 'Priya' ? 'she' : 'he'} pack in total?`;
-                
-                return { question, answer: total };
-                
-            } else if (difficulty === 'easy only') {
-                // Randomly choose between Easy 1 and Easy 2
-                const subType = randomInt(1, 2);
-                
-                if (subType === 1) {
-                    // Bus capacity problem
-                    const redSeats = randomInt(60, 100);
-                    const greenSeats = randomInt(50, 90);
-                    const redCount = randomInt(3, 7);
-                    const greenCount = randomInt(4, 8);
-                    const total = (redSeats * redCount) + (greenSeats * greenCount);
-                    
-                    const questionKey = `le_easy1_${redSeats}_${greenSeats}_${redCount}_${greenCount}`;
-                    if (generatedQuestions.has(questionKey)) continue;
-                    generatedQuestions.add(questionKey);
-                    
-                    const question = `A Red bus has ${redSeats} seats, whereas Green bus has ${greenSeats} seats.\nThe school arranges for ${redCount} Red buses and ${greenCount} Green buses.\nHow many people can travel in total?`;
-                    
-                    return { question, answer: total };
-                } else {
-                    // Box capacity problem
-                    const yellowCap = randomInt(60, 100);
-                    const brownCap = randomInt(50, 90);
-                    const yellowCount = randomInt(4, 8);
-                    const brownCount = randomInt(5, 10);
-                    const total = (yellowCap * yellowCount) + (brownCap * brownCount);
-                    
-                    const questionKey = `le_easy2_${yellowCap}_${brownCap}_${yellowCount}_${brownCount}`;
-                    if (generatedQuestions.has(questionKey)) continue;
-                    generatedQuestions.add(questionKey);
-                    
-                    const names = ['Rahul', 'Priya', 'Arman'];
-                    const name = names[randomInt(0, names.length - 1)];
-                    
-                    const question = `${name} has two types of boxes.\nYellow boxes can hold ${yellowCap} books each and Brown boxes can hold ${brownCap} books each. ${name === 'Priya' ? 'She' : 'He'} uses ${yellowCount} Yellow boxes and ${brownCount} Brown boxes.\nHow many books can ${name === 'Priya' ? 'she' : 'he'} pack in total?`;
-                    
-                    return { question, answer: total };
-                }
-                
-            } else if (difficulty === 'medium 1') {
-                // Cashier notes/coins problem - MCQ format
-                // Valid Indian currency pairs: [smaller, larger]
-                // Includes coins (₹1, ₹2, ₹5) for harder arithmetic (no trailing zeros)
-                const currencyPairs = [
-                    { values: [1, 2], labels: ['₹1 coins', '₹2 coins'] },
-                    { values: [1, 5], labels: ['₹1 coins', '₹5 coins'] },
-                    { values: [2, 5], labels: ['₹2 coins', '₹5 coins'] },
-                    { values: [5, 10], labels: ['₹5 coins', '₹10 notes'] },
-                    { values: [5, 20], labels: ['₹5 coins', '₹20 notes'] },
-                    { values: [10, 20], labels: ['₹10 notes', '₹20 notes'] },
-                    { values: [10, 50], labels: ['₹10 notes', '₹50 notes'] },
-                    { values: [20, 50], labels: ['₹20 notes', '₹50 notes'] },
-                    { values: [50, 100], labels: ['₹50 notes', '₹100 notes'] },
-                    { values: [100, 500], labels: ['₹100 notes', '₹500 notes'] }
-                ];
-                const pair = currencyPairs[randomInt(0, currencyPairs.length - 1)];
-                const note1 = pair.values[0];
-                const note2 = pair.values[1];
-                const label1 = pair.labels[0];
-                const label2 = pair.labels[1];
-                const totalNotes = randomInt(100, 200);
-                const totalAmount = randomInt(note1 * 20, note2 * totalNotes);
-                
-                // x*note1 + y*note2 = totalAmount, x + y = totalNotes
-                // x = (note2 * totalNotes - totalAmount) / (note2 - note1)
-                
-                const x_correct = (note2 * totalNotes - totalAmount) / (note2 - note1);
-                const y_correct = totalNotes - x_correct;
-                
-                if (x_correct !== Math.floor(x_correct) || y_correct !== Math.floor(y_correct)) continue;
-                if (x_correct <= 0 || y_correct <= 0) continue;
-                
-                const questionKey = `le_m1_${note1}_${note2}_${totalAmount}_${totalNotes}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `A cashier has ₹${totalAmount} in total. The money is only in ${label1} and ${label2}.\nThere are ${totalNotes} coins/notes altogether. How many ${label1} and ${label2} can she have from the following?`;
-                
-                // This is MCQ - need to return differently
-                return { 
-                    question, 
-                    isMCQ: true,
-                    correctAnswer: `${Math.floor(x_correct)} of ${label1} and ${Math.floor(y_correct)} of ${label2}`
-                };
-                
-            } else if (difficulty === 'medium 2') {
-                // Notebook and pen combination - MCQ format
-                const notebookPrice = randomInt(50, 100);
-                const penPrice = randomInt(20, 50);
-                const totalAmount = randomInt(2000, 6000);
-                
-                // Generate a valid combination
-                const notebooks = randomInt(20, 50);
-                const pens = randomInt(20, 80);
-                const calculatedTotal = notebooks * notebookPrice + pens * penPrice;
-                
-                if (calculatedTotal !== totalAmount) {
-                    // Adjust to make it work
-                    const adjustedTotal = calculatedTotal;
-                    
-                    const questionKey = `le_m2_${notebookPrice}_${penPrice}_${adjustedTotal}`;
-                    if (generatedQuestions.has(questionKey)) continue;
-                    generatedQuestions.add(questionKey);
-                    
-                    const question = `The price of one notebook is ₹${notebookPrice} and the price of one pen is ₹${penPrice}.\nWhich of the following combinations costs exactly ₹${adjustedTotal}?`;
-                    
-                    return {
-                        question,
-                        isMCQ: true,
-                        correctAnswer: `${notebooks} notebooks and ${pens} pens`
-                    };
-                }
-                
-            } else if (difficulty === 'medium only') {
-                // Randomly choose between Medium 1 and Medium 2
-                const subType = randomInt(1, 2);
-                
-                if (subType === 1) {
-                    // Cashier notes/coins problem - MCQ format
-                    const currencyPairs = [
-                        { values: [1, 2], labels: ['₹1 coins', '₹2 coins'] },
-                        { values: [1, 5], labels: ['₹1 coins', '₹5 coins'] },
-                        { values: [2, 5], labels: ['₹2 coins', '₹5 coins'] },
-                        { values: [5, 10], labels: ['₹5 coins', '₹10 notes'] },
-                        { values: [5, 20], labels: ['₹5 coins', '₹20 notes'] },
-                        { values: [10, 20], labels: ['₹10 notes', '₹20 notes'] },
-                        { values: [10, 50], labels: ['₹10 notes', '₹50 notes'] },
-                        { values: [20, 50], labels: ['₹20 notes', '₹50 notes'] },
-                        { values: [50, 100], labels: ['₹50 notes', '₹100 notes'] },
-                        { values: [100, 500], labels: ['₹100 notes', '₹500 notes'] }
-                    ];
-                    const pair = currencyPairs[randomInt(0, currencyPairs.length - 1)];
-                    const note1 = pair.values[0];
-                    const note2 = pair.values[1];
-                    const label1 = pair.labels[0];
-                    const label2 = pair.labels[1];
-                    const totalNotes = randomInt(100, 200);
-                    const totalAmount = randomInt(note1 * 20, note2 * totalNotes);
-                    
-                    const x_correct = (note2 * totalNotes - totalAmount) / (note2 - note1);
-                    const y_correct = totalNotes - x_correct;
-                    
-                    if (x_correct !== Math.floor(x_correct) || y_correct !== Math.floor(y_correct)) continue;
-                    if (x_correct <= 0 || y_correct <= 0) continue;
-                    
-                    const questionKey = `le_m1_${note1}_${note2}_${totalAmount}_${totalNotes}`;
-                    if (generatedQuestions.has(questionKey)) continue;
-                    generatedQuestions.add(questionKey);
-                    
-                    const question = `A cashier has ₹${totalAmount} in total. The money is only in ${label1} and ${label2}.\nThere are ${totalNotes} coins/notes altogether. How many ${label1} and ${label2} can she have from the following?`;
-                    
-                    return { 
-                        question, 
-                        isMCQ: true,
-                        correctAnswer: `${Math.floor(x_correct)} of ${label1} and ${Math.floor(y_correct)} of ${label2}`
-                    };
-                } else {
-                    // Notebook and pen combination - MCQ format
-                    const notebookPrice = randomInt(50, 100);
-                    const penPrice = randomInt(20, 50);
-                    
-                    const notebooks = randomInt(20, 50);
-                    const pens = randomInt(20, 80);
-                    const totalAmount = notebooks * notebookPrice + pens * penPrice;
-                    
-                    const questionKey = `le_m2_${notebookPrice}_${penPrice}_${totalAmount}`;
-                    if (generatedQuestions.has(questionKey)) continue;
-                    generatedQuestions.add(questionKey);
-                    
-                    const question = `The price of one notebook is ₹${notebookPrice} and the price of one pen is ₹${penPrice}.\nWhich of the following combinations costs exactly ₹${totalAmount}?`;
-                    
-                    return {
-                        question,
-                        isMCQ: true,
-                        correctAnswer: `${notebooks} notebooks and ${pens} pens`
-                    };
-                }
-                
-            } else if (difficulty === 'hard 1') {
-                // Notes/coins with ratio
-                const currencyPairs = [
-                    { values: [1, 5], labels: ['₹1 coins', '₹5 coins'] },
-                    { values: [2, 5], labels: ['₹2 coins', '₹5 coins'] },
-                    { values: [1, 10], labels: ['₹1 coins', '₹10 notes'] },
-                    { values: [2, 10], labels: ['₹2 coins', '₹10 notes'] },
-                    { values: [5, 20], labels: ['₹5 coins', '₹20 notes'] },
-                    { values: [5, 50], labels: ['₹5 coins', '₹50 notes'] },
-                    { values: [10, 50], labels: ['₹10 notes', '₹50 notes'] },
-                    { values: [10, 100], labels: ['₹10 notes', '₹100 notes'] },
-                    { values: [20, 100], labels: ['₹20 notes', '₹100 notes'] },
-                    { values: [50, 500], labels: ['₹50 notes', '₹500 notes'] },
-                    { values: [100, 500], labels: ['₹100 notes', '₹500 notes'] }
-                ];
-                const pair = currencyPairs[randomInt(0, currencyPairs.length - 1)];
-                const note1 = pair.values[0];
-                const note2 = pair.values[1];
-                const label1 = pair.labels[0];
-                const label2 = pair.labels[1];
-                const ratio = randomInt(2, 4); // note1 count is ratio times note2 count
-                
-                const note2Count = randomInt(5, 15);
-                const note1Count = ratio * note2Count;
-                const totalAmount = (note1Count * note1) + (note2Count * note2);
-                
-                const questionKey = `le_h1_${note1}_${note2}_${totalAmount}_${ratio}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const names = ['Bhumika', 'Priya', 'Sita'];
-                const name = names[randomInt(0, names.length - 1)];
-                
-                const question = `${name} has ₹${totalAmount}. All her money is in ${label1} and ${label2}.\nThe number of ${label1} is ${ratio} times the number of ${label2}.\nHow many ${label2} does she have?`;
-                
-                return { question, answer: note2Count };
-                
-            } else if (difficulty === 'hard 2' || difficulty === 'hard only') {
-                // Weight with ratio — realistic sack/bag weights
-                // Each pair: [item1Name, item1Weight, item2Name, item2Weight]
-                const sackPairs = [
-                    { item1: 'rice',    w1: 25, item2: 'sugar',   w2: 50 },
-                    { item1: 'rice',    w1: 50, item2: 'sugar',   w2: 25 },
-                    { item1: 'rice',    w1: 25, item2: 'wheat',   w2: 50 },
-                    { item1: 'wheat',   w1: 50, item2: 'sugar',   w2: 25 },
-                    { item1: 'rice',    w1: 10, item2: 'sugar',   w2: 5  },
-                    { item1: 'wheat',   w1: 10, item2: 'rice',    w2: 25 },
-                    { item1: 'cement',  w1: 50, item2: 'sand',    w2: 25 },
-                    { item1: 'rice',    w1: 5,  item2: 'flour',   w2: 10 },
-                    { item1: 'flour',   w1: 5,  item2: 'sugar',   w2: 25 },
-                    { item1: 'cement',  w1: 50, item2: 'gravel',  w2: 40 },
-                    { item1: 'wheat',   w1: 25, item2: 'flour',   w2: 10 },
-                    { item1: 'rice',    w1: 10, item2: 'lentils', w2: 5  }
-                ];
-                const pair = sackPairs[randomInt(0, sackPairs.length - 1)];
-                const w1 = pair.w1;
-                const w2 = pair.w2;
-                const item1 = pair.item1;
-                const item2 = pair.item2;
-                const r1 = randomInt(2, 4); // item1 ratio
-                const r2 = randomInt(2, 5); // item2 ratio
-                
-                const n = randomInt(50, 200);
-                const totalWeight = (w1 * r1 * n) + (w2 * r2 * n);
-                const item1Sacks = r1 * n;
-                
-                const questionKey = `le_h2_${item1}_${item2}_${w1}_${w2}_${r1}_${r2}_${totalWeight}`;
-                if (generatedQuestions.has(questionKey)) continue;
-                generatedQuestions.add(questionKey);
-                
-                const question = `The weight of one ${item1} sack is ${w1}kg, and the weight of one ${item2} sack is ${w2}kg. For every ${r1} ${item1} sacks, you have ${r2} ${item2} sacks.\n\n(Example: If there are ${r2} ${item2} sacks, then there are ${r1} ${item1} sacks. If there are ${r2 * 2} ${item2} sacks, then there are ${r1 * 2} ${item1} sacks, and so on.)\n\nThe total weight of all the sacks is ${totalWeight} kg. How many ${item1} sacks are there?`;
-                
-                return { question, answer: item1Sacks };
-            }
-        } catch (e) {
-            continue;
-        }
-    }
-    return null;
 }
 
 // ========================================
@@ -1158,7 +74,7 @@ function generateLinearEquation(difficulty) {
 function generateQuestions() {
     const school = document.getElementById('school').value;
     const concept = document.getElementById('concept').value;
-    const difficulty = document.getElementById('difficulty').value;
+    const difficultyValue = document.getElementById('difficulty').value; // "ruleId|difficulty"
     const count = parseInt(document.getElementById('count').value);
 
     if (!count || count < 1) {
@@ -1166,21 +82,13 @@ function generateQuestions() {
         return;
     }
 
-    // Look up the generator function from schoolConfig
-    const conceptConfig = schoolConfig[school]?.concepts[concept];
-    if (!conceptConfig) {
-        alert('Invalid school/concept combination.');
+    // Parse the ruleId and difficulty key from the dropdown value
+    const [ruleId, difficultyKey] = difficultyValue.split('|');
+    const rule = RuleEngine.getRule(ruleId);
+    if (!rule) {
+        alert(`Rule "${ruleId}" not found in the rule engine.`);
         return;
     }
-
-    const generatorFn = generatorMap[conceptConfig.generator];
-    if (!generatorFn) {
-        alert(`Generator "${conceptConfig.generator}" not found.`);
-        return;
-    }
-
-    // Reset generated questions tracker
-    generatedQuestions.clear();
 
     const questions = [];
     let attempts = 0;
@@ -1188,10 +96,37 @@ function generateQuestions() {
 
     while (questions.length < count && attempts < maxAttempts) {
         attempts++;
-        const result = generatorFn(difficulty);
+        try {
+            const { questionData, answer } = rule.generateForDifficulty(difficultyKey);
+            const questionText = rule.formatQuestion(questionData);
 
-        if (result) {
+            // Build a result object compatible with displayQuestions
+            const result = {
+                question: questionText,
+                answer: typeof answer === 'object' ? null : answer,     // numeric answer (null for MCQ)
+                isMCQ: !!questionData.isMCQ,
+                correctAnswer: null,
+                type: questionData.type || null,
+                ruleId: ruleId,
+                questionData: questionData  // keep for MCQ option generation
+            };
+
+            // For MCQ rules (leCashierNotes, leNotebookPenCombo), build correctAnswer string
+            if (questionData.isMCQ && answer && typeof answer === 'object') {
+                // Reconstruct the correctAnswer string from answer data + labels
+                if (answer.count1 != null && answer.count2 != null) {
+                    const l1 = questionData.label1 || 'type 1';
+                    const l2 = questionData.label2 || 'type 2';
+                    result.correctAnswer = `${answer.count1} of ${l1} and ${answer.count2} of ${l2}`;
+                } else if (answer.notebooks != null && answer.pens != null) {
+                    result.correctAnswer = `${answer.notebooks} notebooks and ${answer.pens} pens`;
+                }
+            }
+
             questions.push(result);
+        } catch (e) {
+            // Generation can occasionally fail (constraints not met) — retry
+            continue;
         }
     }
 
@@ -1200,15 +135,15 @@ function generateQuestions() {
         return;
     }
 
-    const schoolLabel = schoolConfig[school]?.label || school;
-    displayQuestions(questions, concept, difficulty, schoolLabel);
+    const schoolLabel = RuleEngine.schoolLabels[school] || school;
+    displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel);
 }
 
 // ========================================
 // DISPLAY FUNCTIONS
 // ========================================
 
-function displayQuestions(questions, concept, difficulty, schoolLabel) {
+function displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel) {
     const output = document.getElementById('output');
     const questionCount = document.getElementById('questionCount');
     
@@ -1229,7 +164,7 @@ function displayQuestions(questions, concept, difficulty, schoolLabel) {
         let correctLetter = '';
 
         if (q.isMCQ) {
-            const options = generateMCQOptions(q.correctAnswer, concept);
+            const options = generateMCQOptions(q.correctAnswer);
             const shuffled = shuffleOptionsWithAnswer(options, q.correctAnswer);
             displayOptions = shuffled.options.map((opt, i) => {
                 return { letter: String.fromCharCode(65 + i), text: opt };
@@ -1255,7 +190,8 @@ function displayQuestions(questions, concept, difficulty, schoolLabel) {
         window.generatedQuestionsRaw.push({
             ...q,
             concept,
-            difficulty,
+            ruleId: q.ruleId || ruleId,
+            difficulty: difficultyKey,
             school: document.getElementById('school').value,
             displayOptions,
             correctLetter
@@ -1303,53 +239,7 @@ function displayQuestions(questions, concept, difficulty, schoolLabel) {
     }
 
     // Store for PDF generation (existing flow)
-    window.currentQuestions = { questions, concept, difficulty, answerKey, schoolLabel };
-}
-
-function generateMCQOptions(correctAnswer, concept) {
-    // Generate 3 plausible wrong answers for MCQ questions
-    const options = [correctAnswer];
-    
-    // Parse the correct answer to generate variations
-    const match = correctAnswer.match(/(\d+)[^\d]+(\d+)/);
-    if (match) {
-        const num1 = parseInt(match[1]);
-        const num2 = parseInt(match[2]);
-        
-        // Create variations
-        for (let i = 0; i < 3; i++) {
-            let var1, var2;
-            do {
-                const offset = randomInt(5, 20);
-                if (Math.random() < 0.5) {
-                    var1 = num1 + offset;
-                    var2 = num2 - offset;
-                } else {
-                    var1 = num1 - offset;
-                    var2 = num2 + offset;
-                }
-            } while (var1 <= 0 || var2 <= 0);
-            
-            const newOption = correctAnswer.replace(/\d+/, var1).replace(/\d+/, var2);
-            if (!options.includes(newOption)) {
-                options.push(newOption);
-            }
-        }
-    }
-    
-    // Fill remaining with random variations if needed
-    while (options.length < 4) {
-        options.push(correctAnswer + ' (variant)');
-    }
-    
-    return options.slice(0, 4);
-}
-
-function shuffleOptionsWithAnswer(options, correctAnswer) {
-    const shuffled = shuffle(options);
-    const correctIndex = shuffled.indexOf(correctAnswer);
-    const correctLetter = String.fromCharCode(65 + correctIndex);
-    return { options: shuffled, correctLetter };
+    window.currentQuestions = { questions, concept, ruleId, difficulty: difficultyKey, answerKey, schoolLabel };
 }
 
 // ========================================
@@ -1411,7 +301,7 @@ function downloadPDF() {
         y += 3;
 
         if (q.isMCQ) {
-            const options = generateMCQOptions(q.correctAnswer, concept);
+            const options = generateMCQOptions(q.correctAnswer);
             const { options: shuffledOpts } = shuffleOptionsWithAnswer(options, q.correctAnswer);
             
             shuffledOpts.forEach((opt, i) => {
@@ -1483,106 +373,11 @@ function downloadPDF() {
 let questionPapers = {};
 let activePaperId = null;
 
-// Concept order per school (determines section order in the paper)
-const conceptOrderBySchool = {
-    'SOP': ['number patterns', 'percentages', 'work and time', 'linear equations in two variables'],
-    'SOB': ['number patterns', 'percentages', 'profit and loss', 'simple interest'],
-    'SOF': ['number patterns', 'percentages', 'profit and loss', 'simple interest'],
-    'BCA': ['number patterns', 'percentages', 'work and time', 'linear equations in two variables']
-};
-
-// ========================================
-// PAPER BLUEPRINT — exact required slots per school
-// ========================================
-// Each school maps to an array of { concept, difficulty } slots.
-// The difficulty values here match the difficulty *values* stored on each question
-// (i.e. the value from the dropdown / schoolConfig).
-// The label is for display in the progress grid.
-
-const paperBlueprint = {
-    'SOP': [
-        // Number Patterns — 4 questions
-        { concept: 'number patterns', difficulty: 'easy only',   label: 'Easy' },
-        { concept: 'number patterns', difficulty: 'medium 1',    label: 'Medium 1' },
-        { concept: 'number patterns', difficulty: 'medium 2',    label: 'Medium 2' },
-        { concept: 'number patterns', difficulty: 'hard only',   label: 'Hard' },
-        // Percentages — 3 questions
-        { concept: 'percentages', difficulty: 'easy only',   label: 'Easy' },
-        { concept: 'percentages', difficulty: 'medium only', label: 'Medium' },
-        { concept: 'percentages', difficulty: 'hard only',   label: 'Hard' },
-        // Work and Time — 3 questions
-        { concept: 'work and time', difficulty: 'easy only',   label: 'Easy' },
-        { concept: 'work and time', difficulty: 'medium only', label: 'Medium' },
-        { concept: 'work and time', difficulty: 'hard only',   label: 'Hard' },
-        // Linear Equations — 6 questions
-        { concept: 'linear equations in two variables', difficulty: 'easy 1',   label: 'Easy 1' },
-        { concept: 'linear equations in two variables', difficulty: 'easy 2',   label: 'Easy 2' },
-        { concept: 'linear equations in two variables', difficulty: 'medium 1', label: 'Medium 1' },
-        { concept: 'linear equations in two variables', difficulty: 'medium 2', label: 'Medium 2' },
-        { concept: 'linear equations in two variables', difficulty: 'hard 1',   label: 'Hard 1' },
-        { concept: 'linear equations in two variables', difficulty: 'hard 2',   label: 'Hard 2' }
-    ],
-    'SOB': [
-        // Number Patterns — 4 questions
-        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
-        // Percentages — 4 questions
-        { concept: 'percentages', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'percentages', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'percentages', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'percentages', difficulty: 'hard only', label: 'Hard' },
-        // Profit and Loss — 4 questions
-        { concept: 'profit and loss', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'profit and loss', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'profit and loss', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'profit and loss', difficulty: 'hard only', label: 'Hard' },
-        // Simple Interest — 4 questions
-        { concept: 'simple interest', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'simple interest', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'simple interest', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'simple interest', difficulty: 'hard only', label: 'Hard' }
-    ],
-    'SOF': [
-        // Same structure as SOB
-        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
-        { concept: 'percentages', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'percentages', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'percentages', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'percentages', difficulty: 'hard only', label: 'Hard' },
-        { concept: 'profit and loss', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'profit and loss', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'profit and loss', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'profit and loss', difficulty: 'hard only', label: 'Hard' },
-        { concept: 'simple interest', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'simple interest', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'simple interest', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'simple interest', difficulty: 'hard only', label: 'Hard' }
-    ],
-    'BCA': [
-        // Same structure as SOP
-        { concept: 'number patterns', difficulty: 'easy only', label: 'Easy' },
-        { concept: 'number patterns', difficulty: 'medium 1',  label: 'Medium 1' },
-        { concept: 'number patterns', difficulty: 'medium 2',  label: 'Medium 2' },
-        { concept: 'number patterns', difficulty: 'hard only', label: 'Hard' },
-        { concept: 'percentages', difficulty: 'easy only',   label: 'Easy' },
-        { concept: 'percentages', difficulty: 'medium only', label: 'Medium' },
-        { concept: 'percentages', difficulty: 'hard only',   label: 'Hard' },
-        { concept: 'work and time', difficulty: 'easy only',   label: 'Easy' },
-        { concept: 'work and time', difficulty: 'medium only', label: 'Medium' },
-        { concept: 'work and time', difficulty: 'hard only',   label: 'Hard' },
-        { concept: 'linear equations in two variables', difficulty: 'easy 1',   label: 'Easy 1' },
-        { concept: 'linear equations in two variables', difficulty: 'easy 2',   label: 'Easy 2' },
-        { concept: 'linear equations in two variables', difficulty: 'medium 1', label: 'Medium 1' },
-        { concept: 'linear equations in two variables', difficulty: 'medium 2', label: 'Medium 2' },
-        { concept: 'linear equations in two variables', difficulty: 'hard 1',   label: 'Hard 1' },
-        { concept: 'linear equations in two variables', difficulty: 'hard 2',   label: 'Hard 2' }
-    ]
-};
+// Concept order per school (derived from RuleEngine.schoolRuleMap key order)
+function getConceptOrder(school) {
+    const map = RuleEngine.schoolRuleMap[school];
+    return map ? Object.keys(map) : [];
+}
 
 // ========================================
 // PAPER PROGRESS COMPUTATION
@@ -1590,17 +385,18 @@ const paperBlueprint = {
 
 /**
  * Computes the fill-status of every blueprint slot for the given paper.
+ * Uses RuleEngine.getSlots() instead of old paperBlueprint.
  * Returns an object keyed by concept, each containing:
  *   { label, required: number, filled: number, slots: [{ difficulty, label, filled: bool }] }
  */
 function computePaperProgress(paper) {
-    const blueprint = paperBlueprint[paper.school];
+    const blueprint = RuleEngine.getSlots(paper.school);
     if (!blueprint) return null;
 
-    // Count how many questions exist per concept+difficulty
+    // Count how many questions exist per concept+ruleId
     const counts = {};
     paper.questions.forEach(q => {
-        const key = `${q.concept}|||${q.difficulty}`;
+        const key = `${q.concept}|||${q.ruleId}`;
         counts[key] = (counts[key] || 0) + 1;
     });
 
@@ -1613,9 +409,10 @@ function computePaperProgress(paper) {
             conceptMap[slot.concept] = { slots: [], filled: 0, required: 0 };
             conceptOrder.push(slot.concept);
         }
-        const key = `${slot.concept}|||${slot.difficulty}`;
+        const key = `${slot.concept}|||${slot.ruleId}`;
         const isFilled = (counts[key] || 0) >= 1;
         conceptMap[slot.concept].slots.push({
+            ruleId: slot.ruleId,
             difficulty: slot.difficulty,
             label: slot.label,
             filled: isFilled,
@@ -1629,11 +426,11 @@ function computePaperProgress(paper) {
 }
 
 /**
- * Checks if a specific concept+difficulty slot is already filled in the given paper.
+ * Checks if a specific concept+ruleId slot is already filled in the given paper.
  * Returns the count of questions already in that slot.
  */
-function getSlotCount(paper, concept, difficulty) {
-    return paper.questions.filter(q => q.concept === concept && q.difficulty === difficulty).length;
+function getSlotCount(paper, concept, ruleId) {
+    return paper.questions.filter(q => q.concept === concept && q.ruleId === ruleId).length;
 }
 
 // Concept explanation texts for the PDF (matching reference papers)
@@ -1855,13 +652,13 @@ function renderActivePaper() {
     contents.style.display = '';
 
     const paper = questionPapers[activePaperId];
-    const schoolLabel = schoolConfig[paper.school]?.label || paper.school;
+    const schoolLabel = RuleEngine.schoolLabels[paper.school] || paper.school;
 
     document.getElementById('activePaperTitleDisplay').textContent = `${activePaperId} — ${schoolLabel}`;
 
     // Compute blueprint progress
     const progress = computePaperProgress(paper);
-    const blueprint = paperBlueprint[paper.school];
+    const blueprint = RuleEngine.getSlots(paper.school);
     const totalRequired = blueprint ? blueprint.length : 0;
     const totalFilled = progress ? progress.conceptOrder.reduce((sum, c) => sum + progress.conceptMap[c].filled, 0) : 0;
 
@@ -1909,8 +706,8 @@ function renderActivePaper() {
         progressContainer.innerHTML = '';
     }
 
-    // Group questions by concept, maintaining the order they appear in conceptOrderBySchool
-    const order = conceptOrderBySchool[paper.school] || [];
+    // Group questions by concept, maintaining the order from schoolRuleMap
+    const order = getConceptOrder(paper.school);
     const grouped = {};
     paper.questions.forEach(q => {
         if (!grouped[q.concept]) grouped[q.concept] = [];
@@ -2020,7 +817,16 @@ function addSelectedToPaper() {
     }
 
     const paper = questionPapers[activePaperId];
-    const blueprint = paperBlueprint[paper.school];
+    const blueprint = RuleEngine.getSlots(paper.school);
+
+    // Block adding questions from a different school
+    const currentGenerateSchool = document.getElementById('school').value;
+    if (currentGenerateSchool !== paper.school) {
+        const genLabel = RuleEngine.schoolLabels[currentGenerateSchool] || currentGenerateSchool;
+        const paperLabel = RuleEngine.schoolLabels[paper.school] || paper.school;
+        alert(`❌ School mismatch!\n\nYou are generating questions for "${genLabel}" but the active paper "${activePaperId}" belongs to "${paperLabel}".\n\nSwitch to a ${paper.school} paper, or generate questions for ${paper.school}.`);
+        return;
+    }
 
     // Collect selected questions
     const selectedQuestions = [];
@@ -2037,21 +843,22 @@ function addSelectedToPaper() {
 
     selectedQuestions.forEach(q => {
         if (blueprint) {
-            // Check if this concept+difficulty is a valid slot in the blueprint
-            const isValidSlot = blueprint.some(s => s.concept === q.concept && s.difficulty === q.difficulty);
+            // Check if this concept+ruleId is a valid slot in the blueprint
+            const isValidSlot = blueprint.some(s => s.concept === q.concept && s.ruleId === q.ruleId);
             if (!isValidSlot) {
-                warnings.push(`"${q.concept} / ${q.difficulty}" is not a required slot for ${paper.school}.`);
+                warnings.push(`"${q.concept} / ${q.ruleId}" is not a required slot for ${paper.school}.`);
             }
             // Check if the slot is already filled
-            const currentCount = getSlotCount(paper, q.concept, q.difficulty);
+            const currentCount = getSlotCount(paper, q.concept, q.ruleId);
             if (currentCount >= 1) {
-                warnings.push(`Slot "${q.concept} / ${q.difficulty}" already has ${currentCount} question(s). Adding another will overfill it.`);
+                warnings.push(`Slot "${q.concept} / ${q.ruleId}" already has ${currentCount} question(s). Adding another will overfill it.`);
             }
         }
 
         // Add to paper regardless (soft warning, not blocking)
         paper.questions.push({
             concept: q.concept,
+            ruleId: q.ruleId,
             difficulty: q.difficulty,
             question: q.question,
             answer: q.answer,
@@ -2168,7 +975,7 @@ function downloadQuestionPaperPDF() {
     y += 4;
 
     // ---- QUESTIONS BY CONCEPT SECTION ----
-    const order = conceptOrderBySchool[paper.school] || [];
+    const order = getConceptOrder(paper.school);
     const grouped = {};
     paper.questions.forEach(q => {
         if (!grouped[q.concept]) grouped[q.concept] = [];
@@ -2334,7 +1141,7 @@ function downloadAnswerKeyPDF() {
     doc.text(`Answer Key \u2013 ${activePaperId}`, pageWidth / 2, y, { align: 'center' });
     y += 12;
 
-    const order = conceptOrderBySchool[paper.school] || [];
+    const order = getConceptOrder(paper.school);
     const grouped = {};
     paper.questions.forEach(q => {
         if (!grouped[q.concept]) grouped[q.concept] = [];
@@ -2372,33 +1179,22 @@ function downloadAnswerKeyPDF() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
-    // Build generator map (function name string → actual function reference)
-    generatorMap = {
-        'generateNumberPattern': generateNumberPattern,
-        'generatePercentage': generatePercentage,
-        'generatePercentageSOB': generatePercentageSOB,
-        'generateWorkTime': generateWorkTime,
-        'generateProfitLoss': generateProfitLoss,
-        'generateSimpleInterest': generateSimpleInterest,
-        'generateLinearEquation': generateLinearEquation
-    };
-
-    // Populate School dropdown from schoolConfig
+    // Populate School dropdown from RuleEngine
     const schoolSelect = document.getElementById('school');
-    Object.keys(schoolConfig).forEach(key => {
+    RuleEngine.listSchools().forEach(key => {
         const option = document.createElement('option');
         option.value = key;
-        option.textContent = schoolConfig[key].label;
+        option.textContent = RuleEngine.schoolLabels[key] || key;
         schoolSelect.appendChild(option);
     });
 
     // Populate Papers-tab School dropdown
     const paperSchoolSelect = document.getElementById('paperSchool');
     if (paperSchoolSelect) {
-        Object.keys(schoolConfig).forEach(key => {
+        RuleEngine.listSchools().forEach(key => {
             const option = document.createElement('option');
             option.value = key;
-            option.textContent = schoolConfig[key].label;
+            option.textContent = RuleEngine.schoolLabels[key] || key;
             paperSchoolSelect.appendChild(option);
         });
     }
@@ -2406,5 +1202,5 @@ document.addEventListener('DOMContentLoaded', function() {
     // Cascade: school → concept → difficulty
     updateConceptDropdown();
 
-    console.log('Question Generator Ready');
+    console.log('Question Generator Ready — powered by Rule Engine');
 });

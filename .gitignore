@@ -1,0 +1,9 @@
+# Generated bundle (rebuild with: bash build.sh)
+rules-bundle.js
+
+# Node
+node_modules/
+
+# OS
+.DS_Store
+Thumbs.db
