@@ -22,6 +22,12 @@ function initFirebase() {
   try {
     let credential;
 
+    logger.info('Firebase env check: PROJECT_ID=%s, HAS_JSON=%s, HAS_PATH=%s',
+      projectId ? 'yes' : 'no',
+      process.env.FIREBASE_SERVICE_ACCOUNT_JSON ? `yes(${process.env.FIREBASE_SERVICE_ACCOUNT_JSON.length}chars)` : 'no',
+      process.env.FIREBASE_SERVICE_ACCOUNT_PATH ? 'yes' : 'no'
+    );
+
     // Option 1: Full JSON string (for Render / production)
     if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
