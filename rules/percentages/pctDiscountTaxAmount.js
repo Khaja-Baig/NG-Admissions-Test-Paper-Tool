@@ -29,7 +29,7 @@ function generate(params) {
         D = params.percent;
     } else {
         let found = false;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             P = randomIntNoTrailing(cfg.price.min, cfg.price.max);
             D = randomInt(cfg.percent.min, cfg.percent.max);
             const amount = (P * D) / 100;
@@ -38,7 +38,7 @@ function generate(params) {
                 break;
             }
         }
-        if (!found) throw new Error('Could not find valid params within 200 attempts');
+        if (!found) throw new Error('Could not find valid params within 1000 attempts');
     }
 
     if (!Number.isInteger(P) || P <= 0) throw new Error('price must be a positive integer');

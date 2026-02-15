@@ -29,7 +29,7 @@ function generate(params) {
         Y = params.subset;
     } else {
         let found = false;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             X = randomInt(cfg.total.min, cfg.total.max);
             Y = randomInt(5, X - 5);
             const pct = (Y * 100) / X;
@@ -38,7 +38,7 @@ function generate(params) {
                 break;
             }
         }
-        if (!found) throw new Error('Could not find valid params within 200 attempts');
+        if (!found) throw new Error('Could not find valid params within 1000 attempts');
     }
 
     if (!Number.isInteger(X) || X <= 0) throw new Error('total must be a positive integer');

@@ -28,7 +28,7 @@ function generate(params) {
         M = params.marksObtained;
     } else {
         let found = false;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             T = randomIntNoTrailing(cfg.totalMarks.min, cfg.totalMarks.max);
             M = randomInt(10, T - 5);
             const pct = (M * 100) / T;
@@ -37,7 +37,7 @@ function generate(params) {
                 break;
             }
         }
-        if (!found) throw new Error('Could not find valid params within 200 attempts');
+        if (!found) throw new Error('Could not find valid params within 1000 attempts');
     }
 
     if (!Number.isInteger(T) || T <= 0) throw new Error('totalMarks must be a positive integer');

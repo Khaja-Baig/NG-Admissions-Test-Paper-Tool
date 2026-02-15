@@ -30,13 +30,13 @@ function generate(params) {
         Y = params.fresh;
     } else {
         // Retry internally to guarantee integer percentage
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             X = randomInt(cfg.total.min, cfg.total.max);
             Y = randomInt(5, X - 5);
             const notFresh = X - Y;
             const pct = (notFresh * 100) / X;
             if (pct === Math.floor(pct)) break;
-            if (i === 199) throw new Error('Could not find valid params within 200 attempts');
+            if (i === 999) throw new Error('Could not find valid params within 1000 attempts');
         }
     }
 

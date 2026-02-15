@@ -29,13 +29,13 @@ function generate(params) {
         R = params.rate;
     } else {
         let found = false;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             P = randomInt(cfg.principal.min, cfg.principal.max);
             R = randomInt(cfg.rate.min, cfg.rate.max);
             const SI = (P * R) / 100;
             if (SI === Math.floor(SI)) { found = true; break; }
         }
-        if (!found) throw new Error('Could not find valid params within 200 attempts');
+        if (!found) throw new Error('Could not find valid params within 1000 attempts');
     }
 
     if (!Number.isInteger(P) || P <= 0) throw new Error('principal must be a positive integer');

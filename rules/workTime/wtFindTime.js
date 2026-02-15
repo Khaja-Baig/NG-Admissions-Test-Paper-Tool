@@ -34,7 +34,7 @@ function generate(params) {
         T2 = params.taps2;
     } else {
         let found = false;
-        for (let i = 0; i < 200; i++) {
+        for (let i = 0; i < 1000; i++) {
             G = randomInt(cfg.glasses.min, cfg.glasses.max);
             T1 = randomInt(cfg.taps1.min, cfg.taps1.max);
             M1 = randomInt(cfg.minutes1.min, cfg.minutes1.max);
@@ -43,7 +43,7 @@ function generate(params) {
             const M2 = (T1 * M1) / T2;
             if (M2 === Math.floor(M2) && M2 > 0) { found = true; break; }
         }
-        if (!found) throw new Error('Could not find valid params within 200 attempts');
+        if (!found) throw new Error('Could not find valid params within 1000 attempts');
     }
 
     if (!Number.isInteger(T1) || T1 <= 0) throw new Error('taps1 must be a positive integer');
