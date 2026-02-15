@@ -18,6 +18,47 @@ let cachedDisplayConfig = {};   // { conceptExplanations, conceptDisplayTitles, 
 
 // Display data aliases (filled after init)
 let conceptExplanations  = {};
+
+// ========================================
+// PDF SETTINGS (localStorage-backed)
+// ========================================
+function getPdfSettings() {
+    try {
+        const saved = JSON.parse(localStorage.getItem('pdfSettings') || '{}');
+        return {
+            institution: saved.institution || '',
+            examTitle:   saved.examTitle   || ''
+        };
+    } catch (e) {
+        return { institution: '', examTitle: '' };
+    }
+}
+
+function savePdfSettings() {
+    const institution = document.getElementById('pdfInstitution').value.trim();
+    const examTitle   = document.getElementById('pdfExamTitle').value.trim();
+    localStorage.setItem('pdfSettings', JSON.stringify({ institution, examTitle }));
+}
+
+function loadPdfSettings() {
+    const s = getPdfSettings();
+    const instEl = document.getElementById('pdfInstitution');
+    const examEl = document.getElementById('pdfExamTitle');
+    if (instEl) instEl.value = s.institution;
+    if (examEl) examEl.value = s.examTitle;
+}
+
+function togglePdfSettings() {
+    const body  = document.getElementById('pdfSettingsBody');
+    const arrow = document.getElementById('pdfSettingsArrow');
+    if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.textContent = '▾';
+    } else {
+        body.style.display = 'none';
+        arrow.textContent = '▸';
+    }
+}
 let conceptDisplayTitles = {};
 let schoolFullNames      = {};
 
@@ -243,10 +284,18 @@ function downloadPDF() {
     }
 
     // Title
+    const pdfS = getPdfSettings();
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
-    doc.text('Question Paper', 105, y, { align: 'center' });
-    y += 10;
+    doc.text(pdfS.institution || 'Question Paper', 105, y, { align: 'center' });
+    y += 8;
+    if (pdfS.examTitle) {
+        doc.setFontSize(13);
+        doc.setFont(undefined, 'normal');
+        doc.text(pdfS.examTitle, 105, y, { align: 'center' });
+        y += 8;
+    }
+    y += 2;
     
     doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
@@ -829,12 +878,21 @@ function downloadQuestionPaperPDF() {
     }
 
     // ---- HEADER ----
+    const pdfS = getPdfSettings();
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
-    doc.text('NavGurukul \u2013 Screening Test', pageWidth / 2, y, { align: 'center' });
-    y += 10;
+    doc.text(pdfS.institution || 'Question Paper', pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    if (pdfS.examTitle) {
+        doc.setFontSize(12);
+        doc.setFont(undefined, 'normal');
+        doc.text(pdfS.examTitle, pageWidth / 2, y, { align: 'center' });
+        y += 8;
+    }
+    y += 2;
 
     doc.setFontSize(13);
+    doc.setFont(undefined, 'bold');
     const schoolName = schoolFullNames[paper.school] || paper.school;
     doc.text(schoolName, pageWidth / 2, y, { align: 'center' });
     y += 9;
@@ -1025,10 +1083,21 @@ function downloadAnswerKeyPDF() {
     const lineHeight = 7;
     let y = 20;
 
+    const pdfS = getPdfSettings();
     doc.setFontSize(16);
     doc.setFont(undefined, 'bold');
-    doc.text(`Answer Key \u2013 ${activePaperId}`, pageWidth / 2, y, { align: 'center' });
-    y += 12;
+    const answerKeyTitle = pdfS.institution
+        ? `${pdfS.institution} \u2013 Answer Key \u2013 ${activePaperId}`
+        : `Answer Key \u2013 ${activePaperId}`;
+    doc.text(answerKeyTitle, pageWidth / 2, y, { align: 'center' });
+    y += 8;
+    if (pdfS.examTitle) {
+        doc.setFontSize(11);
+        doc.setFont(undefined, 'normal');
+        doc.text(pdfS.examTitle, pageWidth / 2, y, { align: 'center' });
+        y += 8;
+    }
+    y += 4;
 
     const order = getConceptOrder(paper.school);
     const grouped = {};
@@ -1128,6 +1197,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Cascade: school → concept → difficulty
         await updateConceptDropdown();
+
+        // Load saved PDF settings into the form
+        loadPdfSettings();
 
         console.log('Question Generator Ready — powered by API');
     } catch (e) {

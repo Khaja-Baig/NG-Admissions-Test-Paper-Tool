@@ -14,6 +14,27 @@
             <p class="subtitle">Create exam-ready question papers in seconds</p>
         </header>
 
+        <!-- PDF Settings (collapsible) -->
+        <div class="pdf-settings-panel">
+            <button class="pdf-settings-toggle" onclick="togglePdfSettings()">
+                ⚙️ PDF Settings
+                <span id="pdfSettingsArrow">▸</span>
+            </button>
+            <div class="pdf-settings-body" id="pdfSettingsBody" style="display:none;">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="pdfInstitution">Institution Name</label>
+                        <input type="text" id="pdfInstitution" placeholder="e.g. Delhi Public School" oninput="savePdfSettings()">
+                    </div>
+                    <div class="form-group">
+                        <label for="pdfExamTitle">Exam Title</label>
+                        <input type="text" id="pdfExamTitle" placeholder="e.g. Admission Test 2026" oninput="savePdfSettings()">
+                    </div>
+                </div>
+                <p class="pdf-settings-hint">These appear as headers on all downloaded PDFs. Saved automatically.</p>
+            </div>
+        </div>
+
         <!-- Tab Navigation -->
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('generate')">Generate Questions</button>
