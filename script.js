@@ -1,37 +1,48 @@
 // ========================================
-// UTILITY ALIASES  (loaded from rules-bundle.js → window.RuleEngine)
+// API-DRIVEN FRONTEND
 // ========================================
-// All shared utilities now live in rules/utils.js and rules/mcqHelpers.js.
-// They are bundled into RuleEngine and aliased here for convenience.
-
-const randomInt              = RuleEngine.randomInt;
-const hasTrailingZeros       = RuleEngine.hasTrailingZeros;
-const shuffle                = RuleEngine.shuffle;
-const generateDistractors    = RuleEngine.generateDistractors;
-const createOptions          = RuleEngine.createOptions;
-const generateMCQOptions     = RuleEngine.generateMCQOptions;
-const shuffleOptionsWithAnswer = RuleEngine.shuffleOptionsWithAnswer;
+// All data and question generation now comes from the backend API.
+// No RuleEngine bundle needed — the browser is a pure UI client.
+//
+// API base URL (same origin when served by Express)
+const API = '';
 
 // ========================================
-// RULE ENGINE (loaded via rules-bundle.js → window.RuleEngine)
+// CACHED SERVER DATA (populated on init)
 // ========================================
-// RuleEngine.getRule(ruleId)        — get a rule object
-// RuleEngine.getSlots(school)       — flat array of { concept, ruleId, difficulty, label }
-// RuleEngine.getConceptConfig(school) — concept → { label, slots[] } for dropdowns
-// RuleEngine.schoolLabels           — { SOP: 'School of Programming (SOP)', ... }
-// RuleEngine.schoolRuleMap          — full mapping
-// ========================================
+let cachedSchools       = [];   // [{ id, label }]
+let cachedSchoolLabels  = {};   // { SOP: 'School of Programming (SOP)', ... }
+let cachedSchoolConfigs = {};   // { SOP: { concepts: { ... } }, ... }
+let cachedSlots         = {};   // { SOP: { totalSlots, slots[] }, ... }
+let cachedDisplayConfig = {};   // { conceptExplanations, conceptDisplayTitles, schoolFullNames }
+
+// Display data aliases (filled after init)
+let conceptExplanations  = {};
+let conceptDisplayTitles = {};
+let schoolFullNames      = {};
 
 // ========================================
 // CASCADING DROPDOWN FUNCTIONS
 // ========================================
 
 // Update Concept dropdown based on selected School
-function updateConceptDropdown() {
+async function updateConceptDropdown() {
     const schoolKey = document.getElementById('school').value;
     const conceptSelect = document.getElementById('concept');
-    const conceptConfig = RuleEngine.getConceptConfig(schoolKey) || {};
 
+    // Fetch and cache school config if not already cached
+    if (!cachedSchoolConfigs[schoolKey]) {
+        try {
+            const res = await fetch(`${API}/api/schools/${schoolKey}/config`);
+            const data = await res.json();
+            cachedSchoolConfigs[schoolKey] = data.concepts || {};
+        } catch (e) {
+            console.error('Failed to fetch school config:', e);
+            cachedSchoolConfigs[schoolKey] = {};
+        }
+    }
+
+    const conceptConfig = cachedSchoolConfigs[schoolKey] || {};
     conceptSelect.innerHTML = '';
 
     Object.keys(conceptConfig).forEach(conceptKey => {
@@ -53,8 +64,8 @@ function updateDifficultyDropdown() {
     const conceptKey = document.getElementById('concept').value;
     const difficultySelect = document.getElementById('difficulty');
 
-    const conceptConfig = RuleEngine.getConceptConfig(schoolKey);
-    const slots = conceptConfig?.[conceptKey]?.slots || [];
+    const conceptConfig = cachedSchoolConfigs[schoolKey] || {};
+    const slots = conceptConfig[conceptKey]?.slots || [];
 
     difficultySelect.innerHTML = '';
 
@@ -71,7 +82,7 @@ function updateDifficultyDropdown() {
 // MAIN GENERATION FUNCTION
 // ========================================
 
-function generateQuestions() {
+async function generateQuestions() {
     const school = document.getElementById('school').value;
     const concept = document.getElementById('concept').value;
     const difficultyValue = document.getElementById('difficulty').value; // "ruleId|difficulty"
@@ -84,59 +95,45 @@ function generateQuestions() {
 
     // Parse the ruleId and difficulty key from the dropdown value
     const [ruleId, difficultyKey] = difficultyValue.split('|');
-    const rule = RuleEngine.getRule(ruleId);
-    if (!rule) {
-        alert(`Rule "${ruleId}" not found in the rule engine.`);
-        return;
-    }
 
-    const questions = [];
-    let attempts = 0;
-    const maxAttempts = count * 50;
+    // Show loading state
+    const output = document.getElementById('output');
+    output.innerHTML = '<div class="placeholder"><p>Generating questions...</p></div>';
 
-    while (questions.length < count && attempts < maxAttempts) {
-        attempts++;
-        try {
-            const { questionData, answer } = rule.generateForDifficulty(difficultyKey);
-            const questionText = rule.formatQuestion(questionData);
+    try {
+        const res = await fetch(`${API}/api/rules/${ruleId}/generate-batch`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ difficulty: difficultyKey, count })
+        });
 
-            // Build a result object compatible with displayQuestions
-            const result = {
-                question: questionText,
-                answer: typeof answer === 'object' ? null : answer,     // numeric answer (null for MCQ)
-                isMCQ: !!questionData.isMCQ,
-                correctAnswer: null,
-                type: questionData.type || null,
-                ruleId: ruleId,
-                questionData: questionData  // keep for MCQ option generation
-            };
-
-            // For MCQ rules (leCashierNotes, leNotebookPenCombo), build correctAnswer string
-            if (questionData.isMCQ && answer && typeof answer === 'object') {
-                // Reconstruct the correctAnswer string from answer data + labels
-                if (answer.count1 != null && answer.count2 != null) {
-                    const l1 = questionData.label1 || 'type 1';
-                    const l2 = questionData.label2 || 'type 2';
-                    result.correctAnswer = `${answer.count1} of ${l1} and ${answer.count2} of ${l2}`;
-                } else if (answer.notebooks != null && answer.pens != null) {
-                    result.correctAnswer = `${answer.notebooks} notebooks and ${answer.pens} pens`;
-                }
-            }
-
-            questions.push(result);
-        } catch (e) {
-            // Generation can occasionally fail (constraints not met) — retry
-            continue;
+        if (!res.ok) {
+            const err = await res.json();
+            alert(`Error: ${err.error || 'Unknown error'}`);
+            return;
         }
-    }
 
-    if (questions.length === 0) {
-        alert('Unable to generate questions. Please try different parameters.');
-        return;
-    }
+        const data = await res.json();
+        const questions = data.questions;
 
-    const schoolLabel = RuleEngine.schoolLabels[school] || school;
-    displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel);
+        if (!questions || questions.length === 0) {
+            alert('Unable to generate questions. Please try different parameters.');
+            return;
+        }
+
+        // Attach concept/school/difficulty metadata to each question
+        questions.forEach(q => {
+            q.concept = concept;
+            q.school = school;
+            q.difficulty = difficultyKey;
+        });
+
+        const schoolLabel = cachedSchoolLabels[school] || school;
+        displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel);
+    } catch (e) {
+        console.error('Generate failed:', e);
+        alert('Failed to connect to server. Is the server running?');
+    }
 }
 
 // ========================================
@@ -149,7 +146,7 @@ function displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel
     
     questionCount.textContent = `${questions.length} Questions`;
     
-    // Store the raw generated questions with their pre-computed options for later selection
+    // Store the raw generated questions for later selection (options come from server)
     window.generatedQuestionsRaw = [];
     
     let html = '';
@@ -159,32 +156,9 @@ function displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel
     questions.forEach((q, index) => {
         const qNum = index + 1;
         
-        // Pre-compute options so they are stable (stored for Add-to-Paper)
-        let displayOptions = [];
-        let correctLetter = '';
-
-        if (q.isMCQ) {
-            const options = generateMCQOptions(q.correctAnswer);
-            const shuffled = shuffleOptionsWithAnswer(options, q.correctAnswer);
-            displayOptions = shuffled.options.map((opt, i) => {
-                return { letter: String.fromCharCode(65 + i), text: opt };
-            });
-            correctLetter = shuffled.correctLetter;
-        } else {
-            const { options, correctLetter: cl } = createOptions(q.answer);
-            correctLetter = cl;
-            displayOptions = options.map((opt, i) => {
-                const letter = String.fromCharCode(65 + i);
-                let displayOpt = opt;
-                if (q.type && opt === q.answer) {
-                    displayOpt = `${q.type.charAt(0).toUpperCase() + q.type.slice(1)} of ₹${opt}`;
-                } else if (q.type) {
-                    const randType = Math.random() < 0.5 ? 'Profit' : 'Loss';
-                    displayOpt = `${randType} of ₹${opt}`;
-                }
-                return { letter, text: displayOpt };
-            });
-        }
+        // displayOptions and correctLetter come from the server
+        const displayOptions = q.displayOptions || [];
+        const correctLetter = q.correctLetter || '';
 
         // Save for later use when adding to paper
         window.generatedQuestionsRaw.push({
@@ -356,10 +330,10 @@ function downloadPDF() {
 let questionPapers = {};
 let activePaperId = null;
 
-// Concept order per school (derived from RuleEngine.schoolRuleMap key order)
+// Concept order per school (derived from cached school config key order)
 function getConceptOrder(school) {
-    const map = RuleEngine.schoolRuleMap[school];
-    return map ? Object.keys(map) : [];
+    const config = cachedSchoolConfigs[school];
+    return config ? Object.keys(config) : [];
 }
 
 // ========================================
@@ -368,12 +342,13 @@ function getConceptOrder(school) {
 
 /**
  * Computes the fill-status of every blueprint slot for the given paper.
- * Uses RuleEngine.getSlots() instead of old paperBlueprint.
+ * Uses cached slots data instead of RuleEngine.getSlots().
  * Returns an object keyed by concept, each containing:
  *   { label, required: number, filled: number, slots: [{ difficulty, label, filled: bool }] }
  */
 function computePaperProgress(paper) {
-    const blueprint = RuleEngine.getSlots(paper.school);
+    const slotData = cachedSlots[paper.school];
+    const blueprint = slotData ? slotData.slots : null;
     if (!blueprint) return null;
 
     // Count how many questions exist per concept+ruleId
@@ -416,10 +391,7 @@ function getSlotCount(paper, concept, ruleId) {
     return paper.questions.filter(q => q.concept === concept && q.ruleId === ruleId).length;
 }
 
-// Display data aliases (loaded from rules/displayConfig.js via bundle)
-const conceptExplanations  = RuleEngine.conceptExplanations;
-const conceptDisplayTitles = RuleEngine.conceptDisplayTitles;
-const schoolFullNames      = RuleEngine.schoolFullNames;
+// Display data aliases — populated from cached API data (see init)
 
 // ========================================
 // TAB SWITCHING
@@ -567,13 +539,14 @@ function renderActivePaper() {
     contents.style.display = '';
 
     const paper = questionPapers[activePaperId];
-    const schoolLabel = RuleEngine.schoolLabels[paper.school] || paper.school;
+    const schoolLabel = cachedSchoolLabels[paper.school] || paper.school;
 
     document.getElementById('activePaperTitleDisplay').textContent = `${activePaperId} — ${schoolLabel}`;
 
     // Compute blueprint progress
     const progress = computePaperProgress(paper);
-    const blueprint = RuleEngine.getSlots(paper.school);
+    const slotData = cachedSlots[paper.school];
+    const blueprint = slotData ? slotData.slots : null;
     const totalRequired = blueprint ? blueprint.length : 0;
     const totalFilled = progress ? progress.conceptOrder.reduce((sum, c) => sum + progress.conceptMap[c].filled, 0) : 0;
 
@@ -732,13 +705,14 @@ function addSelectedToPaper() {
     }
 
     const paper = questionPapers[activePaperId];
-    const blueprint = RuleEngine.getSlots(paper.school);
+    const slotData = cachedSlots[paper.school];
+    const blueprint = slotData ? slotData.slots : null;
 
     // Block adding questions from a different school
     const currentGenerateSchool = document.getElementById('school').value;
     if (currentGenerateSchool !== paper.school) {
-        const genLabel = RuleEngine.schoolLabels[currentGenerateSchool] || currentGenerateSchool;
-        const paperLabel = RuleEngine.schoolLabels[paper.school] || paper.school;
+        const genLabel = cachedSchoolLabels[currentGenerateSchool] || currentGenerateSchool;
+        const paperLabel = cachedSchoolLabels[paper.school] || paper.school;
         alert(`❌ School mismatch!\n\nYou are generating questions for "${genLabel}" but the active paper "${activePaperId}" belongs to "${paperLabel}".\n\nSwitch to a ${paper.school} paper, or generate questions for ${paper.school}.`);
         return;
     }
@@ -1093,29 +1067,72 @@ function downloadAnswerKeyPDF() {
 }
 
 // Initialize
-document.addEventListener('DOMContentLoaded', function() {
-    // Populate School dropdown from RuleEngine
-    const schoolSelect = document.getElementById('school');
-    RuleEngine.listSchools().forEach(key => {
-        const option = document.createElement('option');
-        option.value = key;
-        option.textContent = RuleEngine.schoolLabels[key] || key;
-        schoolSelect.appendChild(option);
-    });
+document.addEventListener('DOMContentLoaded', async function() {
+    try {
+        // Fetch schools and display config in parallel
+        const [schoolsRes, displayRes] = await Promise.all([
+            fetch(`${API}/api/schools`),
+            fetch(`${API}/api/display-config`)
+        ]);
 
-    // Populate Papers-tab School dropdown
-    const paperSchoolSelect = document.getElementById('paperSchool');
-    if (paperSchoolSelect) {
-        RuleEngine.listSchools().forEach(key => {
-            const option = document.createElement('option');
-            option.value = key;
-            option.textContent = RuleEngine.schoolLabels[key] || key;
-            paperSchoolSelect.appendChild(option);
+        const schoolsData = await schoolsRes.json();
+        const displayData = await displayRes.json();
+
+        // Cache schools
+        cachedSchools = schoolsData.schools || [];
+        cachedSchools.forEach(s => { cachedSchoolLabels[s.id] = s.label; });
+
+        // Cache display config
+        cachedDisplayConfig = displayData;
+        conceptExplanations  = displayData.conceptExplanations  || {};
+        conceptDisplayTitles = displayData.conceptDisplayTitles || {};
+        schoolFullNames      = displayData.schoolFullNames      || {};
+
+        // Pre-fetch all school configs and slots in parallel
+        const configPromises = cachedSchools.map(s =>
+            fetch(`${API}/api/schools/${s.id}/config`).then(r => r.json())
+        );
+        const slotPromises = cachedSchools.map(s =>
+            fetch(`${API}/api/schools/${s.id}/slots`).then(r => r.json())
+        );
+
+        const [configs, slots] = await Promise.all([
+            Promise.all(configPromises),
+            Promise.all(slotPromises)
+        ]);
+
+        cachedSchools.forEach((s, i) => {
+            cachedSchoolConfigs[s.id] = configs[i].concepts || {};
+            cachedSlots[s.id] = slots[i];
         });
+
+        // Populate School dropdown
+        const schoolSelect = document.getElementById('school');
+        cachedSchools.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = s.label;
+            schoolSelect.appendChild(option);
+        });
+
+        // Populate Papers-tab School dropdown
+        const paperSchoolSelect = document.getElementById('paperSchool');
+        if (paperSchoolSelect) {
+            cachedSchools.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.id;
+                option.textContent = s.label;
+                paperSchoolSelect.appendChild(option);
+            });
+        }
+
+        // Cascade: school → concept → difficulty
+        await updateConceptDropdown();
+
+        console.log('Question Generator Ready — powered by API');
+    } catch (e) {
+        console.error('Failed to initialize:', e);
+        document.getElementById('output').innerHTML =
+            '<div class="placeholder"><p style="color:red;">Failed to connect to server. Make sure the server is running (npm start).</p></div>';
     }
-
-    // Cascade: school → concept → difficulty
-    updateConceptDropdown();
-
-    console.log('Question Generator Ready — powered by Rule Engine');
 });

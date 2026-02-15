@@ -26,12 +26,28 @@ const path    = require('path');
 const { getRule, listRules, listRuleIds } = require('../rules/ruleRegistry');
 const { schoolRuleMap, schoolLabels, getSlots, getConceptConfig, listSchools } = require('../rules/schoolRuleMap');
 const displayConfig = require('../rules/displayConfig');
+const { createOptions, shuffle } = require('../rules/utils');
+const { generateMCQOptions, shuffleOptionsWithAnswer } = require('../rules/mcqHelpers');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// ── Request logging middleware ──────────────────────────────────────────────
+app.use((req, res, next) => {
+    if (!req.path.startsWith('/api/')) return next(); // skip static files
+    const start = Date.now();
+    const origEnd = res.end.bind(res);
+    res.end = function (...args) {
+        const ms = Date.now() - start;
+        const body = req.method === 'POST' ? ` ${JSON.stringify(req.body)}` : '';
+        console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}${body} → ${res.statusCode} (${ms}ms)`);
+        origEnd(...args);
+    };
+    next();
+});
 
 // ── Static files (serve the browser app) ────────────────────────────────────
 app.use(express.static(path.join(__dirname, '..')));
@@ -113,6 +129,100 @@ app.post('/api/rules/:id/generate', (req, res) => {
     } catch (err) {
         res.status(400).json({ error: err.message });
     }
+});
+
+// ── Helper: build display options for a generated question ──────────────────
+function buildDisplayOptions(rule, questionData, answer) {
+    let displayOptions = [];
+    let correctLetter = '';
+
+    if (questionData.isMCQ) {
+        // String-based MCQ (e.g. cashier notes, notebook pen combo)
+        let correctAnswer = '';
+        if (answer && typeof answer === 'object') {
+            if (answer.count1 != null && answer.count2 != null) {
+                const l1 = questionData.label1 || 'type 1';
+                const l2 = questionData.label2 || 'type 2';
+                correctAnswer = `${answer.count1} of ${l1} and ${answer.count2} of ${l2}`;
+            } else if (answer.notebooks != null && answer.pens != null) {
+                correctAnswer = `${answer.notebooks} notebooks and ${answer.pens} pens`;
+            }
+        }
+        const options = generateMCQOptions(correctAnswer);
+        const shuffled = shuffleOptionsWithAnswer(options, correctAnswer);
+        displayOptions = shuffled.options.map((opt, i) => ({
+            letter: String.fromCharCode(65 + i), text: opt
+        }));
+        correctLetter = shuffled.correctLetter;
+    } else {
+        // Numeric answer MCQ
+        const numericAnswer = typeof answer === 'object' ? null : answer;
+        if (numericAnswer != null) {
+            const { options, correctLetter: cl } = createOptions(numericAnswer);
+            correctLetter = cl;
+            displayOptions = options.map((opt, i) => {
+                const letter = String.fromCharCode(65 + i);
+                let displayOpt = opt;
+                if (questionData.type && opt === numericAnswer) {
+                    displayOpt = `${questionData.type.charAt(0).toUpperCase() + questionData.type.slice(1)} of ₹${opt}`;
+                } else if (questionData.type) {
+                    const randType = Math.random() < 0.5 ? 'Profit' : 'Loss';
+                    displayOpt = `${randType} of ₹${opt}`;
+                }
+                return { letter, text: String(displayOpt) };
+            });
+        }
+    }
+
+    return { displayOptions, correctLetter };
+}
+
+/**
+ * POST /api/rules/:id/generate-batch
+ * Body: { difficulty: 'easy', count: 12 }
+ * Returns an array of generated questions with display options.
+ */
+app.post('/api/rules/:id/generate-batch', (req, res) => {
+    const rule = getRule(req.params.id);
+    if (!rule) return res.status(404).json({ error: `Rule "${req.params.id}" not found` });
+
+    const { difficulty, count = 1 } = req.body || {};
+    const n = Math.min(Math.max(parseInt(count) || 1, 1), 100);
+    const diffKey = difficulty || Object.keys(rule.difficultyConfig || {})[0];
+
+    const questions = [];
+    let attempts = 0;
+    const maxAttempts = n * 50;
+
+    while (questions.length < n && attempts < maxAttempts) {
+        attempts++;
+        try {
+            const { questionData, answer } = rule.generateForDifficulty(diffKey);
+            const questionText = rule.formatQuestion(questionData);
+            const { displayOptions, correctLetter } = buildDisplayOptions(rule, questionData, answer);
+
+            questions.push({
+                question: questionText,
+                answer: typeof answer === 'object' ? null : answer,
+                isMCQ: !!questionData.isMCQ,
+                correctAnswer: questionData.isMCQ ? (displayOptions.find(o => o.letter === correctLetter) || {}).text || '' : null,
+                type: questionData.type || null,
+                ruleId: rule.id,
+                displayOptions,
+                correctLetter
+            });
+        } catch (e) {
+            continue; // retry on constraint failures
+        }
+    }
+
+    res.json({
+        ruleId: rule.id,
+        difficulty: diffKey,
+        requested: n,
+        generated: questions.length,
+        questions
+    });
 });
 
 // ---------- Schools ---------------------------------------------------------
@@ -207,6 +317,21 @@ app.post('/api/papers/generate', (req, res) => {
                 formattedQuestion = rule.formatQuestion(generated.questionData);
             }
 
+            // Build display options (MCQ choices) server-side
+            const { displayOptions, correctLetter } = buildDisplayOptions(rule, generated.questionData, generated.answer);
+
+            // For MCQ rules, build the correctAnswer string
+            let correctAnswer = null;
+            if (generated.questionData.isMCQ && generated.answer && typeof generated.answer === 'object') {
+                if (generated.answer.count1 != null && generated.answer.count2 != null) {
+                    const l1 = generated.questionData.label1 || 'type 1';
+                    const l2 = generated.questionData.label2 || 'type 2';
+                    correctAnswer = `${generated.answer.count1} of ${l1} and ${generated.answer.count2} of ${l2}`;
+                } else if (generated.answer.notebooks != null && generated.answer.pens != null) {
+                    correctAnswer = `${generated.answer.notebooks} notebooks and ${generated.answer.pens} pens`;
+                }
+            }
+
             // Track concept order (first occurrence)
             if (!conceptSeen[slot.concept]) {
                 conceptSeen[slot.concept] = true;
@@ -220,8 +345,13 @@ app.post('/api/papers/generate', (req, res) => {
                 ruleName:    rule.name,
                 difficulty:  slot.difficulty,
                 answerType:  rule.answerType,
-                questionData: generated.questionData,
-                answer:      generated.answer,
+                question:    formattedQuestion,
+                answer:      typeof generated.answer === 'object' ? null : generated.answer,
+                isMCQ:       !!generated.questionData.isMCQ,
+                correctAnswer: correctAnswer,
+                type:        generated.questionData.type || null,
+                displayOptions,
+                correctLetter,
                 formattedQuestion
             });
         } catch (err) {
