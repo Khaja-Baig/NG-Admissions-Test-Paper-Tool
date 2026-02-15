@@ -245,7 +245,7 @@ function downloadPDF() {
     // Title
     doc.setFontSize(18);
     doc.setFont(undefined, 'bold');
-    doc.text('Question Generator - Admissions NG ST', 105, y, { align: 'center' });
+    doc.text('Question Paper', 105, y, { align: 'center' });
     y += 10;
     
     doc.setFontSize(12);
