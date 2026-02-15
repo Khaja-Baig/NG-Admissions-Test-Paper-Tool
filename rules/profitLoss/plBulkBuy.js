@@ -95,5 +95,11 @@ module.exports = {
     validate:             validate,
     formatQuestion:       formatQuestion,
     difficultyConfig:     difficultyConfig,
-    generateForDifficulty: generateForDifficulty
+    generateForDifficulty: generateForDifficulty,
+
+    // --- Metadata (SaaS / search / filter) ---
+    concept:              'profit and loss',
+    tags:                 ["profit","bulk","wholesale","retail"],
+    gradeLevel:           '6-8',
+    answerType:           'numeric'
 };

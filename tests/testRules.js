@@ -585,6 +585,64 @@ expectedConcepts.forEach(c => {
 });
 
 // ============================================================================
+// TEST 22: Rule metadata — concept, tags, gradeLevel, answerType
+// ============================================================================
+console.log('\n' + DIVIDER);
+console.log('TEST 22: Rule metadata — concept, tags, gradeLevel, answerType');
+console.log(DIVIDER);
+
+const validConcepts = [
+    'number patterns', 'percentages', 'work and time',
+    'profit and loss', 'simple interest', 'linear equations'
+];
+const validAnswerTypes = ['numeric', 'mcq'];
+const validGradeLevels = ['5-7', '6-8', '7-9'];
+
+listRules().forEach(rule => {
+    // 22a: concept exists and is valid
+    assert(typeof rule.concept === 'string', `${rule.id}: concept is a string`);
+    assert(validConcepts.includes(rule.concept), `${rule.id}: concept "${rule.concept}" is valid`);
+
+    // 22b: tags is a non-empty array of strings
+    assert(Array.isArray(rule.tags), `${rule.id}: tags is an array`);
+    assert(rule.tags.length > 0, `${rule.id}: tags is non-empty`);
+    rule.tags.forEach(tag => {
+        assert(typeof tag === 'string' && tag.length > 0, `${rule.id}: tag "${tag}" is a non-empty string`);
+    });
+
+    // 22c: gradeLevel is valid
+    assert(typeof rule.gradeLevel === 'string', `${rule.id}: gradeLevel is a string`);
+    assert(validGradeLevels.includes(rule.gradeLevel), `${rule.id}: gradeLevel "${rule.gradeLevel}" is valid`);
+
+    // 22d: answerType is valid
+    assert(typeof rule.answerType === 'string', `${rule.id}: answerType is a string`);
+    assert(validAnswerTypes.includes(rule.answerType), `${rule.id}: answerType "${rule.answerType}" is valid`);
+});
+
+// 22e: MCQ rules have answerType 'mcq'
+['le_cashier_notes', 'le_notebook_pen_combo'].forEach(id => {
+    const rule = getRule(id);
+    assert(rule.answerType === 'mcq', `${id}: answerType is 'mcq'`);
+});
+
+// 22f: Non-MCQ rules have answerType 'numeric'
+['constant_difference', 'pct_not_fresh', 'wt_find_time', 'pl_simple_cp_sp', 'si_find_interest', 'le_bus_capacity'].forEach(id => {
+    const rule = getRule(id);
+    assert(rule.answerType === 'numeric', `${id}: answerType is 'numeric'`);
+});
+
+// 22g: All rules in the same concept folder share the same concept value
+const conceptGroups = {};
+listRules().forEach(rule => {
+    if (!conceptGroups[rule.concept]) conceptGroups[rule.concept] = [];
+    conceptGroups[rule.concept].push(rule.id);
+});
+Object.keys(conceptGroups).forEach(concept => {
+    assert(conceptGroups[concept].length >= 1, `concept "${concept}" has at least 1 rule`);
+});
+assert(Object.keys(conceptGroups).length === validConcepts.length, `All ${validConcepts.length} concepts are represented`);
+
+// ============================================================================
 // SUMMARY
 // ============================================================================
 

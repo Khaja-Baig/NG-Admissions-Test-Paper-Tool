@@ -95,5 +95,11 @@ module.exports = {
     validate:             validate,
     formatQuestion:       formatQuestion,
     difficultyConfig:     difficultyConfig,
-    generateForDifficulty: generateForDifficulty
+    generateForDifficulty: generateForDifficulty,
+
+    // --- Metadata (SaaS / search / filter) ---
+    concept:              'work and time',
+    tags:                 ["work","time","rate"],
+    gradeLevel:           '5-7',
+    answerType:           'numeric'
 };

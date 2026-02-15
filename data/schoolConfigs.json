@@ -1,0 +1,127 @@
+{
+    "schoolLabels": {
+        "SOP": "School of Programming (SOP)",
+        "SOB": "School of Business (SOB)",
+        "SOF": "School of Finance (SOF)",
+        "BCA": "BCA"
+    },
+
+    "conceptDisplayLabels": {
+        "number patterns": "Number Patterns",
+        "percentages": "Percentages",
+        "work and time": "Work and Time",
+        "linear equations in two variables": "Linear Equations in Two Variables",
+        "profit and loss": "Profit and Loss",
+        "simple interest": "Simple Interest"
+    },
+
+    "schoolRuleMap": {
+        "SOP": {
+            "number patterns": [
+                { "ruleId": "constant_difference",    "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "increasing_difference",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "perfect_squares",        "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "alternating_multiplier", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "percentages": [
+                { "ruleId": "pct_not_fresh",          "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pct_after_addition",     "difficulty": "medium", "label": "Medium" },
+                { "ruleId": "pct_reverse_find_count", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "work and time": [
+                { "ruleId": "wt_find_time",               "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "wt_find_taps",                "difficulty": "medium", "label": "Medium" },
+                { "ruleId": "wt_different_glasses_taps",   "difficulty": "hard",   "label": "Hard" }
+            ],
+            "linear equations in two variables": [
+                { "ruleId": "le_bus_capacity",       "difficulty": "easy",   "label": "Easy 1" },
+                { "ruleId": "le_box_capacity",       "difficulty": "easy",   "label": "Easy 2" },
+                { "ruleId": "le_cashier_notes",      "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "le_notebook_pen_combo", "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "le_notes_with_ratio",   "difficulty": "hard",   "label": "Hard 1" },
+                { "ruleId": "le_weight_with_ratio",  "difficulty": "hard",   "label": "Hard 2" }
+            ]
+        },
+
+        "SOB": {
+            "number patterns": [
+                { "ruleId": "constant_difference",    "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "increasing_difference",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "perfect_squares",        "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "alternating_multiplier", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "percentages": [
+                { "ruleId": "pct_part_of_whole",       "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pct_discount_tax_amount", "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "pct_marks_percentage",    "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "pct_population_change",   "difficulty": "hard",   "label": "Hard" }
+            ],
+            "profit and loss": [
+                { "ruleId": "pl_simple_cp_sp",      "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pl_target_profit_sp",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "pl_bulk_buy",          "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "pl_split_selling",     "difficulty": "hard",   "label": "Hard" }
+            ],
+            "simple interest": [
+                { "ruleId": "si_find_interest",  "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "si_find_principal", "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "si_find_amount",    "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "si_find_rate",      "difficulty": "hard",   "label": "Hard" }
+            ]
+        },
+
+        "SOF": {
+            "number patterns": [
+                { "ruleId": "constant_difference",    "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "increasing_difference",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "perfect_squares",        "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "alternating_multiplier", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "percentages": [
+                { "ruleId": "pct_part_of_whole",       "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pct_discount_tax_amount", "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "pct_marks_percentage",    "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "pct_population_change",   "difficulty": "hard",   "label": "Hard" }
+            ],
+            "profit and loss": [
+                { "ruleId": "pl_simple_cp_sp",      "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pl_target_profit_sp",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "pl_bulk_buy",          "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "pl_split_selling",     "difficulty": "hard",   "label": "Hard" }
+            ],
+            "simple interest": [
+                { "ruleId": "si_find_interest",  "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "si_find_principal", "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "si_find_amount",    "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "si_find_rate",      "difficulty": "hard",   "label": "Hard" }
+            ]
+        },
+
+        "BCA": {
+            "number patterns": [
+                { "ruleId": "constant_difference",    "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "increasing_difference",  "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "perfect_squares",        "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "alternating_multiplier", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "percentages": [
+                { "ruleId": "pct_not_fresh",          "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "pct_after_addition",     "difficulty": "medium", "label": "Medium" },
+                { "ruleId": "pct_reverse_find_count", "difficulty": "hard",   "label": "Hard" }
+            ],
+            "work and time": [
+                { "ruleId": "wt_find_time",               "difficulty": "easy",   "label": "Easy" },
+                { "ruleId": "wt_find_taps",                "difficulty": "medium", "label": "Medium" },
+                { "ruleId": "wt_different_glasses_taps",   "difficulty": "hard",   "label": "Hard" }
+            ],
+            "linear equations in two variables": [
+                { "ruleId": "le_bus_capacity",       "difficulty": "easy",   "label": "Easy 1" },
+                { "ruleId": "le_box_capacity",       "difficulty": "easy",   "label": "Easy 2" },
+                { "ruleId": "le_cashier_notes",      "difficulty": "medium", "label": "Medium 1" },
+                { "ruleId": "le_notebook_pen_combo", "difficulty": "medium", "label": "Medium 2" },
+                { "ruleId": "le_notes_with_ratio",   "difficulty": "hard",   "label": "Hard 1" },
+                { "ruleId": "le_weight_with_ratio",  "difficulty": "hard",   "label": "Hard 2" }
+            ]
+        }
+    }
+}

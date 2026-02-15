@@ -124,5 +124,11 @@ module.exports = {
     validate:             validate,
     formatQuestion:       formatQuestion,
     difficultyConfig:     difficultyConfig,
-    generateForDifficulty: generateForDifficulty
+    generateForDifficulty: generateForDifficulty,
+
+    // --- Metadata (SaaS / search / filter) ---
+    concept:              'linear equations',
+    tags:                 ["equation","weight","sack","ratio"],
+    gradeLevel:           '7-9',
+    answerType:           'numeric'
 };

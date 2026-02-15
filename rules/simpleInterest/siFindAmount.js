@@ -92,5 +92,11 @@ module.exports = {
     validate:             validate,
     formatQuestion:       formatQuestion,
     difficultyConfig:     difficultyConfig,
-    generateForDifficulty: generateForDifficulty
+    generateForDifficulty: generateForDifficulty,
+
+    // --- Metadata (SaaS / search / filter) ---
+    concept:              'simple interest',
+    tags:                 ["interest","amount","total"],
+    gradeLevel:           '6-8',
+    answerType:           'numeric'
 };

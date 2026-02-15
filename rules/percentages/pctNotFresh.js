@@ -90,5 +90,11 @@ module.exports = {
     validate:             validate,
     formatQuestion:       formatQuestion,
     difficultyConfig:     difficultyConfig,
-    generateForDifficulty: generateForDifficulty
+    generateForDifficulty: generateForDifficulty,
+
+    // --- Metadata (SaaS / search / filter) ---
+    concept:              'percentages',
+    tags:                 ["percentage","subtraction","not fresh"],
+    gradeLevel:           '5-7',
+    answerType:           'numeric'
 };

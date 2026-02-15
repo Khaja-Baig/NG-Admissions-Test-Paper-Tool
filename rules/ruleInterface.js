@@ -100,6 +100,26 @@
 //
 //   }
 //
+// ----------------------------------------------------------------------------
+// METADATA FIELDS (added for SaaS / search / filter):
+// ----------------------------------------------------------------------------
+//
+//     concept:     String   — The concept family this rule belongs to.
+//                              Must match a key in schoolRuleMap concepts.
+//                              Examples: 'number patterns', 'percentages',
+//                              'work and time', 'profit and loss',
+//                              'simple interest', 'linear equations'
+//
+//     tags:        String[] — Searchable keywords for the no-code builder.
+//                              Examples: ['arithmetic', 'sequence', 'pattern']
+//
+//     gradeLevel:  String   — Target grade range.
+//                              Examples: '5-7', '6-8', '7-9'
+//
+//     answerType:  String   — The format of the answer.
+//                              'numeric' — single number
+//                              'mcq'     — string-based multiple choice
+//
 // ============================================================================
 //
 // GUIDELINES FOR RULE AUTHORS:
