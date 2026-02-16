@@ -828,3 +828,458 @@ button:disabled {
 .progress-summary-status.not-started {
     color: #ef4444;
 }
+
+/* ========================================
+   ADMIN TAB
+   ======================================== */
+
+.admin-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2rem;
+    margin-bottom: 1.5rem;
+    animation: fadeIn 0.4s ease-out;
+}
+
+.admin-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.admin-section-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.admin-section-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-secondary);
+    margin: 0 0 1rem 0;
+}
+
+/* Small admin buttons */
+.admin-btn-sm {
+    flex: none;
+    min-width: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    padding: 0.4rem 1rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: none;
+}
+
+.admin-btn-sm:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: none;
+    box-shadow: none;
+}
+
+.admin-btn-sm.accent {
+    background: linear-gradient(135deg, var(--accent) 0%, #e85d2b 100%);
+    border-color: transparent;
+    color: white;
+}
+
+.admin-btn-sm.accent:hover {
+    box-shadow: 0 4px 15px var(--accent-glow);
+}
+
+.admin-btn-sm.danger {
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.admin-btn-sm.danger:hover {
+    background: rgba(239, 68, 68, 0.1);
+}
+
+/* Data source status */
+.admin-status-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.admin-status-badge.firestore {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.admin-status-badge.json {
+    background: rgba(245, 158, 11, 0.15);
+    color: #f59e0b;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.admin-status-text {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Schools grid */
+.admin-schools-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.admin-school-card {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+    transition: all 0.3s ease;
+    border-left: 4px solid var(--accent);
+}
+
+.admin-school-card:hover {
+    border-color: var(--accent);
+}
+
+.admin-school-card-id {
+    font-family: 'DM Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 0.25rem;
+}
+
+.admin-school-card-label {
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.admin-school-card-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.75rem;
+}
+
+.admin-school-card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+/* Editor panel highlight */
+.admin-editor-panel {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Admin form */
+.admin-form {
+    max-width: 100%;
+}
+
+.admin-form-grid {
+    grid-template-columns: 1fr 1fr;
+}
+
+.admin-hint {
+    margin: 0.3rem 0 0;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    opacity: 0.7;
+}
+
+/* Concept editor within school editor */
+.admin-concept-block {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+}
+
+.admin-concept-block-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    gap: 0.5rem;
+}
+
+.admin-concept-block-header input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    outline: none;
+}
+
+.admin-concept-block-header input:focus {
+    border-color: var(--accent);
+}
+
+.admin-slot-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.admin-slot-row select,
+.admin-slot-row input {
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 0.4rem 0.6rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    outline: none;
+}
+
+.admin-slot-row select:focus,
+.admin-slot-row input:focus {
+    border-color: var(--accent);
+}
+
+.admin-slot-remove {
+    flex: none;
+    min-width: auto;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: #ef4444;
+    padding: 0.3rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    cursor: pointer;
+    box-shadow: none;
+}
+
+.admin-slot-remove:hover {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: #ef4444;
+    transform: none;
+    box-shadow: none;
+}
+
+/* Display config editor */
+.admin-display-group {
+    margin-bottom: 1.5rem;
+}
+
+.admin-display-row {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 0.75rem;
+    align-items: start;
+    margin-bottom: 0.75rem;
+}
+
+.admin-display-row label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    padding-top: 0.5rem;
+    margin-bottom: 0;
+}
+
+.admin-display-row input,
+.admin-display-row textarea {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: 0.5rem 0.75rem;
+    font-family: 'Spectral', serif;
+    font-size: 0.9rem;
+    outline: none;
+    width: 100%;
+    resize: vertical;
+}
+
+.admin-display-row input:focus,
+.admin-display-row textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+/* Rules reference table */
+.admin-rules-table-wrap {
+    overflow-x: auto;
+}
+
+.admin-rules-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+
+.admin-rules-table th {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-secondary);
+    padding: 0.6rem 0.75rem;
+    border-bottom: 2px solid var(--border);
+    text-align: left;
+}
+
+.admin-rules-table td {
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+}
+
+.admin-rules-table tr:hover td {
+    background: var(--bg-tertiary);
+}
+
+/* Toast notification */
+.admin-toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--bg-card, var(--bg-secondary));
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.5rem;
+    font-family: 'DM Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    transform: translateY(120%);
+    opacity: 0;
+    transition: all 0.35s ease;
+    z-index: 9999;
+    max-width: 400px;
+}
+
+.admin-toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.admin-toast.success {
+    border-color: #10b981;
+    border-left: 4px solid #10b981;
+}
+
+.admin-toast.error {
+    border-color: #ef4444;
+    border-left: 4px solid #ef4444;
+}
+
+@media (max-width: 768px) {
+    .admin-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-slot-row {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .admin-display-row {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-schools-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ========================================
+   ADMIN AUTH STYLES
+   ======================================== */
+
+.admin-login-panel {
+    max-width: 450px;
+    margin: 4rem auto;
+    padding: 3rem;
+    text-align: center;
+    border: 1px solid var(--accent);
+    box-shadow: 0 0 30px var(--accent-glow);
+}
+
+.admin-login-header {
+    margin-bottom: 2.5rem;
+}
+
+.admin-login-title {
+    font-family: 'Spectral', serif;
+    font-size: 2rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.admin-login-subtitle {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.admin-error-text {
+    color: #ef4444;
+    font-size: 0.85rem;
+    margin-top: 1.5rem;
+    font-family: 'DM Mono', monospace;
+}
+
+.admin-dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1.5rem;
+    background: var(--bg-tertiary);
+    border-radius: 12px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--border);
+}
+
+.admin-user-info {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+}
+
+.admin-user-info strong {
+    color: var(--accent);
+}

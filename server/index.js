@@ -22,12 +22,12 @@
 
 require('dotenv').config();
 
-const express    = require('express');
-const cors       = require('cors');
-const path       = require('path');
-const helmet     = require('helmet');
-const rateLimit  = require('express-rate-limit');
-const logger     = require('./logger');
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const logger = require('./logger');
 
 // --- Rule engine imports (CommonJS, same modules the browser bundle uses) ---
 const { getRule, listRules, listRuleIds } = require('../rules/ruleRegistry');
@@ -36,8 +36,9 @@ const { generateMCQOptions, shuffleOptionsWithAnswer } = require('../rules/mcqHe
 
 // --- Data layer (Firestore-first, JSON fallback) ---
 const dataLoader = require('./dataLoader');
+const { verifyAdmin } = require('./authMiddleware');
 
-const app  = express();
+const app = express();
 const PORT = parseInt(process.env.PORT, 10) || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -163,13 +164,13 @@ const startTime = Date.now();
 app.get('/api/health', (req, res) => {
     const uptimeMs = Date.now() - startTime;
     res.json({
-        status:    'ok',
-        version:   pkg.version,
-        uptime:    `${Math.floor(uptimeMs / 1000)}s`,
+        status: 'ok',
+        version: pkg.version,
+        uptime: `${Math.floor(uptimeMs / 1000)}s`,
         uptimeMs,
-        env:       NODE_ENV,
-        rules:     listRuleIds().length,
-        schools:   dataLoader.listSchools().length,
+        env: NODE_ENV,
+        rules: listRuleIds().length,
+        schools: dataLoader.listSchools().length,
         dataSource: dataLoader.getDataSource(),
         timestamp: new Date().toISOString()
     });
@@ -183,13 +184,13 @@ app.get('/api/health', (req, res) => {
  */
 app.get('/api/rules', (req, res) => {
     const rules = listRules().map(r => ({
-        id:          r.id,
-        name:        r.name,
+        id: r.id,
+        name: r.name,
         description: r.description,
-        concept:     r.concept,
-        tags:        r.tags,
-        gradeLevel:  r.gradeLevel,
-        answerType:  r.answerType,
+        concept: r.concept,
+        tags: r.tags,
+        gradeLevel: r.gradeLevel,
+        answerType: r.answerType,
         difficulties: Object.keys(r.difficultyConfig || {})
     }));
     res.json({ rules });
@@ -207,13 +208,13 @@ app.get('/api/rules/:id', (req, res) => {
     if (!rule) return res.status(404).json({ error: `Rule "${req.params.id}" not found` });
 
     res.json({
-        id:          rule.id,
-        name:        rule.name,
+        id: rule.id,
+        name: rule.name,
         description: rule.description,
-        concept:     rule.concept,
-        tags:        rule.tags,
-        gradeLevel:  rule.gradeLevel,
-        answerType:  rule.answerType,
+        concept: rule.concept,
+        tags: rule.tags,
+        gradeLevel: rule.gradeLevel,
+        answerType: rule.answerType,
         difficulties: Object.keys(rule.difficultyConfig || {})
     });
 });
@@ -380,7 +381,7 @@ app.post('/api/rules/:id/generate-batch', generateLimiter, (req, res) => {
 app.get('/api/schools', (req, res) => {
     const schoolLabels = dataLoader.getSchoolLabels();
     const schools = dataLoader.listSchools().map(s => ({
-        id:    s,
+        id: s,
         label: schoolLabels[s] || s
     }));
     res.json({ schools });
@@ -420,9 +421,9 @@ app.get('/api/schools/:id/slots', (req, res) => {
  */
 app.get('/api/display-config', (req, res) => {
     res.json({
-        conceptExplanations:  dataLoader.getConceptExplanations(),
+        conceptExplanations: dataLoader.getConceptExplanations(),
         conceptDisplayTitles: dataLoader.getConceptDisplayTitles(),
-        schoolFullNames:      dataLoader.getSchoolFullNames()
+        schoolFullNames: dataLoader.getSchoolFullNames()
     });
 });
 
@@ -495,17 +496,17 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
             }
 
             questions.push({
-                slotLabel:   slot.label,
-                concept:     slot.concept,
-                ruleId:      slot.ruleId,
-                ruleName:    rule.name,
-                difficulty:  slot.difficulty,
-                answerType:  rule.answerType,
-                question:    formattedQuestion,
-                answer:      typeof generated.answer === 'object' ? null : generated.answer,
-                isMCQ:       !!generated.questionData.isMCQ,
+                slotLabel: slot.label,
+                concept: slot.concept,
+                ruleId: slot.ruleId,
+                ruleName: rule.name,
+                difficulty: slot.difficulty,
+                answerType: rule.answerType,
+                question: formattedQuestion,
+                answer: typeof generated.answer === 'object' ? null : generated.answer,
+                isMCQ: !!generated.questionData.isMCQ,
                 correctAnswer: correctAnswer,
-                type:        generated.questionData.type || null,
+                type: generated.questionData.type || null,
                 displayOptions,
                 correctLetter,
                 formattedQuestion
@@ -525,22 +526,22 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
         if (!byConcept[q.concept]) {
             byConcept[q.concept] = {
                 conceptTitle: conceptDisplayTitles[q.concept] || q.concept,
-                explanation:  conceptExplanations[q.concept] || [],
-                questions:    []
+                explanation: conceptExplanations[q.concept] || [],
+                questions: []
             };
         }
         byConcept[q.concept].questions.push(q);
     }
 
     res.json({
-        school:         school,
-        schoolLabel:    schoolLabel,
+        school: school,
+        schoolLabel: schoolLabel,
         schoolFullName: schoolFullName,
-        totalQuestions:  questions.length,
-        conceptOrder:   conceptOrder,
-        concepts:       byConcept,
+        totalQuestions: questions.length,
+        conceptOrder: conceptOrder,
+        concepts: byConcept,
         // Flat array for easy iteration
-        allQuestions:   questions
+        allQuestions: questions
     });
 });
 
@@ -552,7 +553,7 @@ app.post('/api/papers/generate', generateLimiter, (req, res) => {
  * POST /api/admin/refresh
  * Force reload data from Firestore.
  */
-app.post('/api/admin/refresh', async (req, res) => {
+app.post('/api/admin/refresh', verifyAdmin, async (req, res) => {
     try {
         const source = await dataLoader.refreshCache();
         res.json({ message: 'Cache refreshed', source, data: dataLoader.getDataSource() });
@@ -565,7 +566,7 @@ app.post('/api/admin/refresh', async (req, res) => {
  * GET /api/admin/schools/:id
  * Get full school data (for edit form).
  */
-app.get('/api/admin/schools/:id', (req, res) => {
+app.get('/api/admin/schools/:id', verifyAdmin, (req, res) => {
     const schoolId = req.params.id.trim().toUpperCase();
     const schoolLabels = dataLoader.getSchoolLabels();
     const schoolFullNames = dataLoader.getSchoolFullNames();
@@ -597,7 +598,7 @@ app.get('/api/admin/schools/:id', (req, res) => {
  * Create or update a school.
  * Body: { label, fullName, concepts: { 'concept key': { displayLabel, slots: [...] } } }
  */
-app.put('/api/admin/schools/:id', async (req, res) => {
+app.put('/api/admin/schools/:id', verifyAdmin, async (req, res) => {
     const schoolId = req.params.id.trim().toUpperCase();
 
     if (!schoolId || schoolId.length > 20 || !/^[A-Z0-9_]+$/.test(schoolId)) {
@@ -644,7 +645,7 @@ app.put('/api/admin/schools/:id', async (req, res) => {
  * DELETE /api/admin/schools/:id
  * Delete a school.
  */
-app.delete('/api/admin/schools/:id', async (req, res) => {
+app.delete('/api/admin/schools/:id', verifyAdmin, async (req, res) => {
     const schoolId = req.params.id.trim().toUpperCase();
 
     const schoolRuleMap = dataLoader.getSchoolRuleMap();
@@ -665,7 +666,7 @@ app.delete('/api/admin/schools/:id', async (req, res) => {
  * Update display config (explanations, titles, full names).
  * Body: { conceptExplanations?, conceptDisplayTitles?, schoolFullNames? }
  */
-app.put('/api/admin/display-config', async (req, res) => {
+app.put('/api/admin/display-config', verifyAdmin, async (req, res) => {
     const { conceptExplanations, conceptDisplayTitles, schoolFullNames } = req.body || {};
 
     if (!conceptExplanations && !conceptDisplayTitles && !schoolFullNames) {
@@ -689,7 +690,7 @@ app.put('/api/admin/display-config', async (req, res) => {
  * Update concept display labels.
  * Body: { labels: { 'number patterns': 'Number Patterns', ... } }
  */
-app.put('/api/admin/concept-labels', async (req, res) => {
+app.put('/api/admin/concept-labels', verifyAdmin, async (req, res) => {
     const { labels } = req.body || {};
 
     if (!labels || typeof labels !== 'object' || Object.keys(labels).length === 0) {
@@ -717,9 +718,9 @@ app.use('/api/{*path}', (req, res) => {
 app.use((err, req, res, next) => {
     logger.error('Unhandled error', {
         method: req.method,
-        path:   req.originalUrl,
-        error:  err.message,
-        stack:  NODE_ENV === 'development' ? err.stack : undefined
+        path: req.originalUrl,
+        error: err.message,
+        stack: NODE_ENV === 'development' ? err.stack : undefined
     });
     res.status(500).json({
         error: NODE_ENV === 'production'
@@ -740,7 +741,7 @@ async function startServer() {
         const ds = dataLoader.getDataSource();
         logger.info(`NG Admissions API running`, {
             port: PORT,
-            env:  NODE_ENV,
+            env: NODE_ENV,
             rules: listRuleIds().length,
             schools: ds.schools,
             dataSource: ds.source,

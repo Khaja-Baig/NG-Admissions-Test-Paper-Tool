@@ -1,12 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Question Generator — Exam Paper Builder</title>
-    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Spectral:wght@300;400;600;700&family=DM+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body>
     <div class="container">
         <header>
@@ -24,11 +28,13 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label for="pdfInstitution">Institution Name</label>
-                        <input type="text" id="pdfInstitution" placeholder="e.g. Delhi Public School" oninput="savePdfSettings()">
+                        <input type="text" id="pdfInstitution" placeholder="e.g. Delhi Public School"
+                            oninput="savePdfSettings()">
                     </div>
                     <div class="form-group">
                         <label for="pdfExamTitle">Exam Title</label>
-                        <input type="text" id="pdfExamTitle" placeholder="e.g. Admission Test 2026" oninput="savePdfSettings()">
+                        <input type="text" id="pdfExamTitle" placeholder="e.g. Admission Test 2026"
+                            oninput="savePdfSettings()">
                     </div>
                 </div>
                 <p class="pdf-settings-hint">These appear as headers on all downloaded PDFs. Saved automatically.</p>
@@ -39,6 +45,7 @@
         <div class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('generate')">Generate Questions</button>
             <button class="tab-btn" onclick="switchTab('papers')">Question Papers</button>
+            <button class="tab-btn" onclick="switchTab('admin')">⚙ Admin</button>
         </div>
 
         <!-- ============ GENERATE TAB ============ -->
@@ -86,14 +93,16 @@
 
                 <!-- Select All + Add to Paper bar (visible when a paper is active) -->
                 <div class="select-all-row" id="selectAllRow">
-                    <input type="checkbox" class="question-checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)">
+                    <input type="checkbox" class="question-checkbox" id="selectAllCheckbox"
+                        onchange="toggleSelectAll(this)">
                     <label for="selectAllCheckbox">Select All</label>
                 </div>
 
                 <div id="output">
                     <div class="placeholder">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                         <p>Click "Generate Questions" to begin</p>
                     </div>
@@ -102,7 +111,8 @@
                 <!-- Add to Paper bar -->
                 <div class="add-to-paper-bar" id="addToPaperBar">
                     <div class="info">
-                        <span id="selectedCount">0</span> selected · Active paper: <strong id="activePaperLabel">None</strong>
+                        <span id="selectedCount">0</span> selected · Active paper: <strong
+                            id="activePaperLabel">None</strong>
                     </div>
                     <button class="add-to-paper-btn" onclick="addSelectedToPaper()">Add to Paper</button>
                 </div>
@@ -151,9 +161,176 @@
                 </div>
             </div>
         </div>
+        <!-- ============ ADMIN TAB ============ -->
+        <div class="tab-content" id="tab-admin">
+
+            <!-- Admin Login UI -->
+            <div id="adminLoginSection" class="admin-section admin-login-panel">
+                <div class="admin-login-header">
+                    <h2 class="admin-login-title">Admin Login</h2>
+                    <p class="admin-login-subtitle">Access restricted to authorized personnel only</p>
+                </div>
+                <div class="admin-form">
+                    <div class="form-group">
+                        <label for="adminEmail">Email Address</label>
+                        <input type="email" id="adminEmail" placeholder="admin@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label for="adminPassword">Password</label>
+                        <input type="password" id="adminPassword" placeholder="••••••••">
+                    </div>
+                    <button id="loginBtn" onclick="adminLogin()">Login to Dashboard</button>
+                    <p id="loginError" class="admin-error-text" style="display:none;"></p>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard (Hidden by default) -->
+            <div id="adminDashboard" style="display:none;">
+                <div class="admin-dashboard-header">
+                    <p class="admin-user-info" id="adminUserInfo"></p>
+                    <button class="admin-btn-sm secondary" onclick="adminLogout()">Logout</button>
+                </div>
+
+                <!-- Data Source Status -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title">📡 Data Source</h2>
+                        <button class="admin-btn-sm" onclick="adminRefreshCache()">↻ Refresh Cache</button>
+                    </div>
+                    <div class="admin-status-row" id="adminDataSource">
+                        <span class="admin-status-badge" id="adminSourceBadge">—</span>
+                        <span class="admin-status-text" id="adminSourceText">Loading…</span>
+                    </div>
+                </div>
+
+                <!-- Schools Management -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title">🏫 Schools</h2>
+                        <button class="admin-btn-sm accent" onclick="adminShowAddSchool()">+ Add School</button>
+                    </div>
+                    <div class="admin-schools-grid" id="adminSchoolsGrid">
+                        <!-- School cards rendered here -->
+                    </div>
+                </div>
+
+                <!-- School Editor (hidden by default) -->
+                <div class="admin-section admin-editor-panel" id="adminSchoolEditor" style="display:none;">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title" id="adminEditorTitle">Add School</h2>
+                        <button class="admin-btn-sm secondary" onclick="adminCloseEditor()">✕ Close</button>
+                    </div>
+                    <div class="admin-form">
+                        <div class="form-grid admin-form-grid">
+                            <div class="form-group">
+                                <label for="adminSchoolId">School ID</label>
+                                <input type="text" id="adminSchoolId" placeholder="e.g. SOE" maxlength="20">
+                                <p class="admin-hint">Uppercase letters, numbers, underscores. Max 20 chars.</p>
+                            </div>
+                            <div class="form-group">
+                                <label for="adminSchoolLabel">Label</label>
+                                <input type="text" id="adminSchoolLabel" placeholder="e.g. School of Engineering (SOE)">
+                            </div>
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label for="adminSchoolFullName">Full Name</label>
+                                <input type="text" id="adminSchoolFullName" placeholder="e.g. School of Engineering">
+                            </div>
+                        </div>
+
+                        <!-- Concepts / Slots Editor -->
+                        <div class="admin-concepts-section">
+                            <div class="admin-section-header" style="margin-top:1rem;">
+                                <h3 class="admin-section-subtitle">Concepts &amp; Slots</h3>
+                                <button class="admin-btn-sm" onclick="adminAddConcept()">+ Add Concept</button>
+                            </div>
+                            <div id="adminConceptsList">
+                                <!-- Concept editors rendered here -->
+                            </div>
+                        </div>
+
+                        <div class="button-group" style="margin-top:1.5rem;">
+                            <button onclick="adminSaveSchool()">Save School</button>
+                            <button class="secondary" onclick="adminCloseEditor()">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Config Editor -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title">🎨 Display Config</h2>
+                        <button class="admin-btn-sm" onclick="adminToggleDisplayConfig()">Edit</button>
+                    </div>
+                    <div id="adminDisplayConfigEditor" style="display:none;">
+                        <div class="admin-display-group">
+                            <h3 class="admin-section-subtitle">Concept Display Titles</h3>
+                            <div id="adminConceptTitles"></div>
+                        </div>
+                        <div class="admin-display-group">
+                            <h3 class="admin-section-subtitle">School Full Names</h3>
+                            <div id="adminSchoolFullNames"></div>
+                        </div>
+                        <div class="admin-display-group">
+                            <h3 class="admin-section-subtitle">Concept Explanations (PDF)</h3>
+                            <div id="adminConceptExplanations"></div>
+                        </div>
+                        <div class="button-group" style="margin-top:1rem;">
+                            <button onclick="adminSaveDisplayConfig()">Save Display Config</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Concept Labels Editor -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title">🏷️ Concept Labels</h2>
+                        <button class="admin-btn-sm" onclick="adminToggleConceptLabels()">Edit</button>
+                    </div>
+                    <div id="adminConceptLabelsEditor" style="display:none;">
+                        <div id="adminConceptLabelsFields"></div>
+                        <div class="button-group" style="margin-top:1rem;">
+                            <button onclick="adminSaveConceptLabels()">Save Concept Labels</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Available Rules Reference -->
+                <div class="admin-section">
+                    <div class="admin-section-header">
+                        <h2 class="admin-section-title">📋 Available Rules</h2>
+                        <button class="admin-btn-sm" onclick="adminToggleRules()">Show/Hide</button>
+                    </div>
+                    <div id="adminRulesRef" style="display:none;">
+                        <div class="admin-rules-table-wrap">
+                            <table class="admin-rules-table" id="adminRulesTable">
+                                <thead>
+                                    <tr>
+                                        <th>Rule ID</th>
+                                        <th>Name</th>
+                                        <th>Concept</th>
+                                        <th>Difficulties</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div> <!-- end adminDashboard -->
+        </div>
     </div>
 
+    <!-- Toast notification -->
+    <div class="admin-toast" id="adminToast"></div>
+
+    <!-- Firebase SDK (v9 Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="rules-bundle.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>

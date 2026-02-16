@@ -1,23 +1,132 @@
-// ========================================
-// API-DRIVEN FRONTEND
-// ========================================
-// All data and question generation now comes from the backend API.
-// No RuleEngine bundle needed — the browser is a pure UI client.
-//
-// API base URL (same origin when served by Express)
 const API = '';
+
+// ============ FIREBASE CONFIG (Step 3) ============
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyCD-4Isp0EANhyY0XiZLw7Rh-Zi7PypPX8",
+  authDomain: "exam-paper-generator-44a6e.firebaseapp.com",
+  projectId: "exam-paper-generator-44a6e",
+  storageBucket: "exam-paper-generator-44a6e.firebasestorage.app",
+  messagingSenderId: "750425688843",
+  appId: "1:750425688843:web:041af84faca8234d2c700e",
+  measurementId: "G-02NHCEMYY9"
+};
+
+// Initialize Firebase
+if (typeof firebase !== 'undefined') {
+    firebase.initializeApp(firebaseConfig);
+}
+
+let adminAuthToken = null;
+
+/**
+ * Handle Auth State changes
+ */
+if (typeof firebase !== 'undefined') {
+    firebase.auth().onAuthStateChanged(async (user) => {
+        const loginSection = document.getElementById('adminLoginSection');
+        const dashboard = document.getElementById('adminDashboard');
+        const userInfo = document.getElementById('adminUserInfo');
+
+        if (user) {
+            // User is signed in
+            adminAuthToken = await user.getIdToken();
+            if (loginSection) loginSection.style.display = 'none';
+            if (dashboard) dashboard.style.display = 'block';
+            if (userInfo) userInfo.innerHTML = `Logged in as: <strong>${user.email}</strong>`;
+
+            // If we are currently on the admin tab, refresh data
+            const adminTab = document.querySelectorAll('.tab-btn')[2];
+            if (adminTab && adminTab.classList.contains('active')) {
+                loadAdminData();
+            }
+        } else {
+            // User is signed out
+            adminAuthToken = null;
+            if (loginSection) loginSection.style.display = 'block';
+            if (dashboard) dashboard.style.display = 'none';
+        }
+    });
+}
+
+/**
+ * Admin Login Helper
+ */
+async function adminLogin() {
+    const email = document.getElementById('adminEmail').value;
+    const password = document.getElementById('adminPassword').value;
+    const errorEl = document.getElementById('loginError');
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (!email || !password) {
+        errorEl.textContent = 'Please enter both email and password.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    try {
+        errorEl.style.display = 'none';
+        loginBtn.disabled = true;
+        loginBtn.textContent = 'Authenticating...';
+        await firebase.auth().signInWithEmailAndPassword(email, password);
+        // onAuthStateChanged will handle UI transition
+    } catch (error) {
+        console.error('Login failed:', error);
+        errorEl.textContent = error.message;
+        errorEl.style.display = 'block';
+    } finally {
+        loginBtn.disabled = false;
+        loginBtn.textContent = 'Login to Dashboard';
+    }
+}
+
+/**
+ * Admin Logout Helper
+ */
+async function adminLogout() {
+    try {
+        await firebase.auth().signOut();
+    } catch (error) {
+        console.error('Logout failed:', error);
+    }
+}
+
+/**
+ * Secure Fetch Helper for Admin actions
+ */
+async function adminFetch(url, options = {}) {
+    if (!adminAuthToken) {
+        throw new Error('Not authenticated');
+    }
+
+    const headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${adminAuthToken}`,
+        'Content-Type': 'application/json'
+    };
+
+    const res = await fetch(url, { ...options, headers });
+
+    if (res.status === 401) {
+        // Token might be expired, force logout or handle refresh
+        adminLogout();
+        throw new Error('Session expired. Please log in again.');
+    }
+
+    return res;
+}
 
 // ========================================
 // CACHED SERVER DATA (populated on init)
 // ========================================
-let cachedSchools       = [];   // [{ id, label }]
-let cachedSchoolLabels  = {};   // { SOP: 'School of Programming (SOP)', ... }
+let cachedSchools = [];   // [{ id, label }]
+let cachedSchoolLabels = {};   // { SOP: 'School of Programming (SOP)', ... }
 let cachedSchoolConfigs = {};   // { SOP: { concepts: { ... } }, ... }
-let cachedSlots         = {};   // { SOP: { totalSlots, slots[] }, ... }
+let cachedSlots = {};   // { SOP: { totalSlots, slots[] }, ... }
 let cachedDisplayConfig = {};   // { conceptExplanations, conceptDisplayTitles, schoolFullNames }
 
 // Display data aliases (filled after init)
-let conceptExplanations  = {};
+let conceptExplanations = {};
 
 // ========================================
 // PDF SETTINGS (localStorage-backed)
@@ -27,7 +136,7 @@ function getPdfSettings() {
         const saved = JSON.parse(localStorage.getItem('pdfSettings') || '{}');
         return {
             institution: saved.institution || '',
-            examTitle:   saved.examTitle   || ''
+            examTitle: saved.examTitle || ''
         };
     } catch (e) {
         return { institution: '', examTitle: '' };
@@ -36,7 +145,7 @@ function getPdfSettings() {
 
 function savePdfSettings() {
     const institution = document.getElementById('pdfInstitution').value.trim();
-    const examTitle   = document.getElementById('pdfExamTitle').value.trim();
+    const examTitle = document.getElementById('pdfExamTitle').value.trim();
     localStorage.setItem('pdfSettings', JSON.stringify({ institution, examTitle }));
 }
 
@@ -49,7 +158,7 @@ function loadPdfSettings() {
 }
 
 function togglePdfSettings() {
-    const body  = document.getElementById('pdfSettingsBody');
+    const body = document.getElementById('pdfSettingsBody');
     const arrow = document.getElementById('pdfSettingsArrow');
     if (body.style.display === 'none') {
         body.style.display = 'block';
@@ -60,7 +169,7 @@ function togglePdfSettings() {
     }
 }
 let conceptDisplayTitles = {};
-let schoolFullNames      = {};
+let schoolFullNames = {};
 
 // ========================================
 // CASCADING DROPDOWN FUNCTIONS
@@ -184,19 +293,19 @@ async function generateQuestions() {
 function displayQuestions(questions, concept, ruleId, difficultyKey, schoolLabel) {
     const output = document.getElementById('output');
     const questionCount = document.getElementById('questionCount');
-    
+
     questionCount.textContent = `${questions.length} Questions`;
-    
+
     // Store the raw generated questions for later selection (options come from server)
     window.generatedQuestionsRaw = [];
-    
+
     let html = '';
     const answerKey = [];
     const hasActivePaper = !!activePaperId;
 
     questions.forEach((q, index) => {
         const qNum = index + 1;
-        
+
         // displayOptions and correctLetter come from the server
         const displayOptions = q.displayOptions || [];
         const correctLetter = q.correctLetter || '';
@@ -270,9 +379,9 @@ function downloadPDF() {
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
+
     const { questions, concept, difficulty, answerKey, schoolLabel } = window.currentQuestions;
-    
+
     let y = 20;
     const lineHeight = 7;
     const pageHeight = 280;
@@ -296,7 +405,7 @@ function downloadPDF() {
         y += 8;
     }
     y += 2;
-    
+
     doc.setFontSize(12);
     doc.setFont(undefined, 'normal');
     doc.text(`School: ${schoolLabel}`, 20, y);
@@ -454,11 +563,15 @@ function switchTab(tabName) {
     if (tabName === 'generate') {
         document.querySelectorAll('.tab-btn')[0].classList.add('active');
         document.getElementById('tab-generate').classList.add('active');
-    } else {
+    } else if (tabName === 'papers') {
         document.querySelectorAll('.tab-btn')[1].classList.add('active');
         document.getElementById('tab-papers').classList.add('active');
         renderPaperList();
         renderActivePaper();
+    } else if (tabName === 'admin') {
+        document.querySelectorAll('.tab-btn')[2].classList.add('active');
+        document.getElementById('tab-admin').classList.add('active');
+        loadAdminData();
     }
 }
 
@@ -1135,8 +1248,587 @@ function downloadAnswerKeyPDF() {
     doc.save(`${activePaperId} - Answer Key.pdf`);
 }
 
+// ========================================
+// ADMIN PANEL
+// ========================================
+
+let adminRulesCache = []; // cached from /api/rules
+let adminSchoolsCache = {}; // { ID: { label, fullName, concepts } } from admin endpoint
+let adminDisplayConfigCache = {}; // from /api/display-config
+let adminConceptLabelsCache = {}; // from display config
+let adminEditorMode = null; // 'add' | 'edit'
+let adminEditingSchoolId = null;
+
+// ---- Toast helper ----
+function adminToast(message, type = 'success') {
+    const el = document.getElementById('adminToast');
+    el.textContent = message;
+    el.className = 'admin-toast ' + type + ' show';
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.classList.remove('show'); }, 3500);
+}
+
+// ---- Load all admin data ----
+async function loadAdminData() {
+    try {
+        const [healthRes, schoolsRes, displayRes, rulesRes] = await Promise.all([
+            fetch(`${API}/api/health`),
+            fetch(`${API}/api/schools`),
+            fetch(`${API}/api/display-config`),
+            fetch(`${API}/api/rules`)
+        ]);
+
+        const health = await healthRes.json();
+        const schools = await schoolsRes.json();
+        const display = await displayRes.json();
+        const rules = await rulesRes.json();
+
+        // Data source
+        const source = (health.dataSource && health.dataSource.source) || health.source || 'unknown';
+        const badge = document.getElementById('adminSourceBadge');
+        const text = document.getElementById('adminSourceText');
+        if (badge) {
+            badge.textContent = source;
+            badge.className = 'admin-status-badge ' + (source === 'firestore' ? 'firestore' : 'json');
+        }
+        if (text) {
+            text.textContent = source === 'firestore'
+                ? 'Connected to Firestore — data is live'
+                : 'Using local JSON files — Firestore unavailable';
+        }
+
+        // Cache
+        adminRulesCache = rules.rules || [];
+        adminDisplayConfigCache = display;
+        adminConceptLabelsCache = display.conceptDisplayTitles || {};
+
+        // Load all schools' full data for the editor
+        const schoolList = schools.schools || [];
+        adminSchoolsCache = {};
+        const detailPromises = schoolList.map(s =>
+            adminFetch(`${API}/api/admin/schools/${s.id}`).then(r => r.json())
+        );
+        const details = await Promise.all(detailPromises);
+        details.forEach(d => { if (d.id) adminSchoolsCache[d.id] = d; });
+
+        // Render all sections
+        renderAdminSchools();
+        renderAdminRulesTable();
+    } catch (e) {
+        console.error('Failed to load admin data:', e);
+        // Don't toast if it's just an auth error, the onAuthStateChanged handles UI
+        if (e.message !== 'Not authenticated') {
+            adminToast('Failed to load admin data: ' + e.message, 'error');
+        }
+    }
+}
+
+// ---- Refresh Cache ----
+async function adminRefreshCache() {
+    try {
+        const res = await adminFetch(`${API}/api/admin/refresh`, { method: 'POST' });
+        const data = await res.json();
+        const sourceName = data.source?.source || data.data?.source || 'ok';
+        adminToast(`Cache refreshed — source: ${sourceName}`);
+        // Reload admin data + main caches
+        await loadAdminData();
+        await reloadMainCaches();
+    } catch (e) {
+        adminToast('Refresh failed: ' + e.message, 'error');
+    }
+}
+
+// Reload the main app caches (so Generate/Papers tabs reflect changes)
+async function reloadMainCaches() {
+    try {
+        const [schoolsRes, displayRes] = await Promise.all([
+            fetch(`${API}/api/schools`),
+            fetch(`${API}/api/display-config`)
+        ]);
+        const schoolsData = await schoolsRes.json();
+        const displayData = await displayRes.json();
+
+        cachedSchools = schoolsData.schools || [];
+        cachedSchoolLabels = {};
+        cachedSchools.forEach(s => { cachedSchoolLabels[s.id] = s.label; });
+
+        cachedDisplayConfig = displayData;
+        conceptExplanations = displayData.conceptExplanations || {};
+        conceptDisplayTitles = displayData.conceptDisplayTitles || {};
+        schoolFullNames = displayData.schoolFullNames || {};
+
+        // Re-fetch configs and slots
+        cachedSchoolConfigs = {};
+        cachedSlots = {};
+        const configPromises = cachedSchools.map(s =>
+            fetch(`${API}/api/schools/${s.id}/config`).then(r => r.json())
+        );
+        const slotPromises = cachedSchools.map(s =>
+            fetch(`${API}/api/schools/${s.id}/slots`).then(r => r.json())
+        );
+        const [configs, slots] = await Promise.all([
+            Promise.all(configPromises),
+            Promise.all(slotPromises)
+        ]);
+        cachedSchools.forEach((s, i) => {
+            cachedSchoolConfigs[s.id] = configs[i].concepts || {};
+            cachedSlots[s.id] = slots[i];
+        });
+
+        // Repopulate dropdowns
+        const schoolSelect = document.getElementById('school');
+        schoolSelect.innerHTML = '';
+        cachedSchools.forEach(s => {
+            const option = document.createElement('option');
+            option.value = s.id;
+            option.textContent = s.label;
+            schoolSelect.appendChild(option);
+        });
+
+        const paperSchoolSelect = document.getElementById('paperSchool');
+        if (paperSchoolSelect) {
+            paperSchoolSelect.innerHTML = '';
+            cachedSchools.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.id;
+                option.textContent = s.label;
+                paperSchoolSelect.appendChild(option);
+            });
+        }
+
+        await updateConceptDropdown();
+    } catch (e) {
+        console.error('Failed to reload main caches:', e);
+    }
+}
+
+// ---- Render Schools Grid ----
+function renderAdminSchools() {
+    const grid = document.getElementById('adminSchoolsGrid');
+    const ids = Object.keys(adminSchoolsCache);
+
+    if (ids.length === 0) {
+        grid.innerHTML = '<p style="color:var(--text-secondary); font-style:italic;">No schools configured.</p>';
+        return;
+    }
+
+    let html = '';
+    ids.forEach(id => {
+        const s = adminSchoolsCache[id];
+        const conceptCount = s.concepts ? Object.keys(s.concepts).length : 0;
+        const slotCount = s.concepts
+            ? Object.values(s.concepts).reduce((sum, c) => sum + (c.slots ? c.slots.length : 0), 0)
+            : 0;
+
+        html += `<div class="admin-school-card">`;
+        html += `<div class="admin-school-card-id">${id}</div>`;
+        html += `<div class="admin-school-card-label">${s.label || id}</div>`;
+        html += `<div class="admin-school-card-meta">${conceptCount} concepts · ${slotCount} slots</div>`;
+        html += `<div class="admin-school-card-actions">`;
+        html += `<button class="admin-btn-sm" onclick="adminEditSchool('${id}')">Edit</button>`;
+        html += `<button class="admin-btn-sm danger" onclick="adminDeleteSchool('${id}')">Delete</button>`;
+        html += `</div>`;
+        html += `</div>`;
+    });
+    grid.innerHTML = html;
+}
+
+// ---- Show Add School ----
+function adminShowAddSchool() {
+    adminEditorMode = 'add';
+    adminEditingSchoolId = null;
+
+    document.getElementById('adminEditorTitle').textContent = 'Add School';
+    document.getElementById('adminSchoolId').value = '';
+    document.getElementById('adminSchoolId').disabled = false;
+    document.getElementById('adminSchoolLabel').value = '';
+    document.getElementById('adminSchoolFullName').value = '';
+    document.getElementById('adminConceptsList').innerHTML = '';
+
+    document.getElementById('adminSchoolEditor').style.display = '';
+    document.getElementById('adminSchoolEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---- Edit School ----
+function adminEditSchool(schoolId) {
+    const school = adminSchoolsCache[schoolId];
+    if (!school) return;
+
+    adminEditorMode = 'edit';
+    adminEditingSchoolId = schoolId;
+
+    document.getElementById('adminEditorTitle').textContent = `Edit School — ${schoolId}`;
+    document.getElementById('adminSchoolId').value = schoolId;
+    document.getElementById('adminSchoolId').disabled = true;
+    document.getElementById('adminSchoolLabel').value = school.label || '';
+    document.getElementById('adminSchoolFullName').value = school.fullName || '';
+
+    // Populate concepts
+    const container = document.getElementById('adminConceptsList');
+    container.innerHTML = '';
+
+    if (school.concepts) {
+        Object.entries(school.concepts).forEach(([conceptKey, conceptData]) => {
+            adminAddConceptBlock(container, conceptKey, conceptData.displayLabel || conceptKey, conceptData.slots || []);
+        });
+    }
+
+    document.getElementById('adminSchoolEditor').style.display = '';
+    document.getElementById('adminSchoolEditor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ---- Close Editor ----
+function adminCloseEditor() {
+    document.getElementById('adminSchoolEditor').style.display = 'none';
+    adminEditorMode = null;
+    adminEditingSchoolId = null;
+}
+
+// ---- Add Concept Block ----
+function adminAddConcept() {
+    const container = document.getElementById('adminConceptsList');
+    adminAddConceptBlock(container, '', '', []);
+}
+
+function adminAddConceptBlock(container, conceptKey, displayLabel, slots) {
+    const block = document.createElement('div');
+    block.className = 'admin-concept-block';
+    block.dataset.conceptKey = conceptKey;
+
+    let html = `<div class="admin-concept-block-header">`;
+    html += `<input type="text" class="concept-key-input" placeholder="Concept key (e.g. percentages)" value="${escapeHtml(conceptKey)}">`;
+    html += `<input type="text" class="concept-label-input" placeholder="Display label" value="${escapeHtml(displayLabel)}">`;
+    html += `<button class="admin-btn-sm" onclick="adminAddSlot(this)">+ Slot</button>`;
+    html += `<button class="admin-btn-sm danger" onclick="this.closest('.admin-concept-block').remove()">✕</button>`;
+    html += `</div>`;
+    html += `<div class="admin-slots-container">`;
+
+    // Build rule options once
+    const ruleOptions = adminRulesCache.map(r =>
+        `<option value="${r.id}">${r.id} — ${r.name}</option>`
+    ).join('');
+
+    slots.forEach(slot => {
+        // Build difficulty options for this rule
+        const rule = adminRulesCache.find(r => r.id === slot.ruleId);
+        const diffOptions = rule
+            ? rule.difficulties.map(d => `<option value="${d}" ${d === slot.difficulty ? 'selected' : ''}>${d}</option>`).join('')
+            : `<option value="${slot.difficulty}" selected>${slot.difficulty}</option>`;
+
+        html += `<div class="admin-slot-row">`;
+        html += `<select class="slot-rule-select" onchange="adminUpdateDiffOptions(this)">${ruleOptions}</select>`;
+        html += `<select class="slot-diff-select">${diffOptions}</select>`;
+        html += `<input type="text" class="slot-label-input" placeholder="Label" value="${escapeHtml(slot.label || '')}">`;
+        html += `<button class="admin-slot-remove" onclick="this.closest('.admin-slot-row').remove()">✕</button>`;
+        html += `</div>`;
+    });
+
+    html += `</div>`;
+    block.innerHTML = html;
+    container.appendChild(block);
+
+    // Set selected rule in dropdowns
+    block.querySelectorAll('.slot-rule-select').forEach((sel, i) => {
+        if (slots[i] && slots[i].ruleId) {
+            sel.value = slots[i].ruleId;
+        }
+    });
+}
+
+function adminAddSlot(btn) {
+    const block = btn.closest('.admin-concept-block');
+    const container = block.querySelector('.admin-slots-container');
+
+    const ruleOptions = adminRulesCache.map(r =>
+        `<option value="${r.id}">${r.id} — ${r.name}</option>`
+    ).join('');
+
+    const firstRule = adminRulesCache[0];
+    const diffOptions = firstRule
+        ? firstRule.difficulties.map(d => `<option value="${d}">${d}</option>`).join('')
+        : '';
+
+    const row = document.createElement('div');
+    row.className = 'admin-slot-row';
+    row.innerHTML = `
+        <select class="slot-rule-select" onchange="adminUpdateDiffOptions(this)">${ruleOptions}</select>
+        <select class="slot-diff-select">${diffOptions}</select>
+        <input type="text" class="slot-label-input" placeholder="Label" value="">
+        <button class="admin-slot-remove" onclick="this.closest('.admin-slot-row').remove()">✕</button>
+    `;
+    container.appendChild(row);
+}
+
+function adminUpdateDiffOptions(selectEl) {
+    const ruleId = selectEl.value;
+    const rule = adminRulesCache.find(r => r.id === ruleId);
+    const diffSelect = selectEl.closest('.admin-slot-row').querySelector('.slot-diff-select');
+
+    if (rule) {
+        diffSelect.innerHTML = rule.difficulties.map(d => `<option value="${d}">${d}</option>`).join('');
+    } else {
+        diffSelect.innerHTML = '';
+    }
+}
+
+// ---- Save School ----
+async function adminSaveSchool() {
+    const schoolId = document.getElementById('adminSchoolId').value.trim().toUpperCase();
+    const label = document.getElementById('adminSchoolLabel').value.trim();
+    const fullName = document.getElementById('adminSchoolFullName').value.trim();
+
+    if (!schoolId) { adminToast('School ID is required', 'error'); return; }
+    if (!label) { adminToast('Label is required', 'error'); return; }
+
+    // Collect concepts
+    const concepts = {};
+    const conceptBlocks = document.querySelectorAll('#adminConceptsList .admin-concept-block');
+    for (const block of conceptBlocks) {
+        const cKey = block.querySelector('.concept-key-input').value.trim();
+        const cLabel = block.querySelector('.concept-label-input').value.trim();
+
+        if (!cKey) { adminToast('All concept keys are required', 'error'); return; }
+
+        const slots = [];
+        block.querySelectorAll('.admin-slot-row').forEach(row => {
+            const ruleId = row.querySelector('.slot-rule-select').value;
+            const difficulty = row.querySelector('.slot-diff-select').value;
+            const slotLabel = row.querySelector('.slot-label-input').value.trim();
+            if (ruleId && difficulty) {
+                slots.push({ ruleId, difficulty, label: slotLabel || `${ruleId} (${difficulty})` });
+            }
+        });
+
+        concepts[cKey] = { displayLabel: cLabel || cKey, slots };
+    }
+
+    try {
+        const res = await adminFetch(`${API}/api/admin/schools/${schoolId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ label, fullName: fullName || label, concepts })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            adminToast(data.error || 'Failed to save', 'error');
+            return;
+        }
+
+        adminToast(`School "${schoolId}" saved successfully`);
+        adminCloseEditor();
+        await loadAdminData();
+        await reloadMainCaches();
+    } catch (e) {
+        adminToast('Save failed: ' + e.message, 'error');
+    }
+}
+
+// ---- Delete School ----
+async function adminDeleteSchool(schoolId) {
+    if (!confirm(`Delete school "${schoolId}"? This cannot be undone.`)) return;
+
+    try {
+        const res = await adminFetch(`${API}/api/admin/schools/${schoolId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (!res.ok) {
+            adminToast(data.error || 'Failed to delete', 'error');
+            return;
+        }
+
+        adminToast(`School "${schoolId}" deleted`);
+        if (adminEditingSchoolId === schoolId) adminCloseEditor();
+        await loadAdminData();
+        await reloadMainCaches();
+    } catch (e) {
+        adminToast('Delete failed: ' + e.message, 'error');
+    }
+}
+
+// ---- Render Rules Table ----
+function renderAdminRulesTable() {
+    const tbody = document.querySelector('#adminRulesTable tbody');
+    if (!tbody) return;
+
+    let html = '';
+    adminRulesCache.forEach(r => {
+        html += `<tr>`;
+        html += `<td>${r.id}</td>`;
+        html += `<td>${r.name || '—'}</td>`;
+        html += `<td>${r.concept || '—'}</td>`;
+        html += `<td>${(r.difficulties || []).join(', ')}</td>`;
+        html += `</tr>`;
+    });
+    tbody.innerHTML = html;
+}
+
+function adminToggleRules() {
+    const el = document.getElementById('adminRulesRef');
+    el.style.display = el.style.display === 'none' ? '' : 'none';
+}
+
+// ---- Display Config Editor ----
+function adminToggleDisplayConfig() {
+    const el = document.getElementById('adminDisplayConfigEditor');
+    if (el.style.display === 'none') {
+        el.style.display = '';
+        renderAdminDisplayConfig();
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+function renderAdminDisplayConfig() {
+    const dc = adminDisplayConfigCache;
+
+    // Concept Display Titles
+    const titlesContainer = document.getElementById('adminConceptTitles');
+    let titlesHtml = '';
+    const titles = dc.conceptDisplayTitles || {};
+    Object.entries(titles).forEach(([key, val]) => {
+        titlesHtml += `<div class="admin-display-row">`;
+        titlesHtml += `<label>${escapeHtml(key)}</label>`;
+        titlesHtml += `<input type="text" data-config="title" data-key="${escapeHtml(key)}" value="${escapeHtml(val)}">`;
+        titlesHtml += `</div>`;
+    });
+    titlesContainer.innerHTML = titlesHtml;
+
+    // School Full Names
+    const namesContainer = document.getElementById('adminSchoolFullNames');
+    let namesHtml = '';
+    const names = dc.schoolFullNames || {};
+    Object.entries(names).forEach(([key, val]) => {
+        namesHtml += `<div class="admin-display-row">`;
+        namesHtml += `<label>${escapeHtml(key)}</label>`;
+        namesHtml += `<input type="text" data-config="fullName" data-key="${escapeHtml(key)}" value="${escapeHtml(val)}">`;
+        namesHtml += `</div>`;
+    });
+    namesContainer.innerHTML = namesHtml;
+
+    // Concept Explanations (each is an array of paragraphs — show as textarea)
+    const explContainer = document.getElementById('adminConceptExplanations');
+    let explHtml = '';
+    const explanations = dc.conceptExplanations || {};
+    Object.entries(explanations).forEach(([key, paragraphs]) => {
+        const text = Array.isArray(paragraphs) ? paragraphs.join('\n') : String(paragraphs);
+        explHtml += `<div class="admin-display-row">`;
+        explHtml += `<label>${escapeHtml(key)}</label>`;
+        explHtml += `<textarea rows="4" data-config="explanation" data-key="${escapeHtml(key)}">${escapeHtml(text)}</textarea>`;
+        explHtml += `</div>`;
+    });
+    explContainer.innerHTML = explHtml;
+}
+
+async function adminSaveDisplayConfig() {
+    const conceptDisplayTitles = {};
+    document.querySelectorAll('[data-config="title"]').forEach(el => {
+        conceptDisplayTitles[el.dataset.key] = el.value.trim();
+    });
+
+    const schoolFullNames = {};
+    document.querySelectorAll('[data-config="fullName"]').forEach(el => {
+        schoolFullNames[el.dataset.key] = el.value.trim();
+    });
+
+    const conceptExplanations = {};
+    document.querySelectorAll('[data-config="explanation"]').forEach(el => {
+        conceptExplanations[el.dataset.key] = el.value.split('\n');
+    });
+
+    try {
+        const res = await adminFetch(`${API}/api/admin/display-config`, {
+            method: 'PUT',
+            body: JSON.stringify({ conceptDisplayTitles, schoolFullNames, conceptExplanations })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            adminToast(data.error || 'Failed to save', 'error');
+            return;
+        }
+
+        adminToast('Display config saved');
+        await loadAdminData();
+        await reloadMainCaches();
+    } catch (e) {
+        adminToast('Save failed: ' + e.message, 'error');
+    }
+}
+
+// ---- Concept Labels Editor ----
+function adminToggleConceptLabels() {
+    const el = document.getElementById('adminConceptLabelsEditor');
+    if (el.style.display === 'none') {
+        el.style.display = '';
+        renderAdminConceptLabels();
+    } else {
+        el.style.display = 'none';
+    }
+}
+
+function renderAdminConceptLabels() {
+    // Concept labels come from the concept config across all schools
+    // Collect all unique concept keys from all schools
+    const allConcepts = new Set();
+    Object.values(adminSchoolsCache).forEach(s => {
+        if (s.concepts) Object.keys(s.concepts).forEach(k => allConcepts.add(k));
+    });
+
+    const container = document.getElementById('adminConceptLabelsFields');
+    let html = '';
+
+    allConcepts.forEach(key => {
+        // Try to find existing display label
+        const existing = Object.values(adminSchoolsCache).reduce((found, s) => {
+            if (found) return found;
+            return s.concepts?.[key]?.displayLabel || null;
+        }, null);
+
+        html += `<div class="admin-display-row">`;
+        html += `<label>${escapeHtml(key)}</label>`;
+        html += `<input type="text" data-concept-label="${escapeHtml(key)}" value="${escapeHtml(existing || key)}">`;
+        html += `</div>`;
+    });
+
+    container.innerHTML = html;
+}
+
+async function adminSaveConceptLabels() {
+    const labels = {};
+    document.querySelectorAll('[data-concept-label]').forEach(el => {
+        labels[el.dataset.conceptLabel] = el.value.trim();
+    });
+
+    try {
+        const res = await adminFetch(`${API}/api/admin/concept-labels`, {
+            method: 'PUT',
+            body: JSON.stringify({ labels })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            adminToast(data.error || 'Failed to save', 'error');
+            return;
+        }
+
+        adminToast('Concept labels saved');
+        await loadAdminData();
+        await reloadMainCaches();
+    } catch (e) {
+        adminToast('Save failed: ' + e.message, 'error');
+    }
+}
+
+// ---- HTML escape helper ----
+function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 // Initialize
-document.addEventListener('DOMContentLoaded', async function() {
+document.addEventListener('DOMContentLoaded', async function () {
     try {
         // Fetch schools and display config in parallel
         const [schoolsRes, displayRes] = await Promise.all([
@@ -1153,9 +1845,9 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Cache display config
         cachedDisplayConfig = displayData;
-        conceptExplanations  = displayData.conceptExplanations  || {};
+        conceptExplanations = displayData.conceptExplanations || {};
         conceptDisplayTitles = displayData.conceptDisplayTitles || {};
-        schoolFullNames      = displayData.schoolFullNames      || {};
+        schoolFullNames = displayData.schoolFullNames || {};
 
         // Pre-fetch all school configs and slots in parallel
         const configPromises = cachedSchools.map(s =>
